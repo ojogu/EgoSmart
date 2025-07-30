@@ -1,0 +1,13 @@
+[project]
+name = "financetracker"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "asyncpg>=0.30.0",
+    "fastapi[all]>=0.115.12",
+    "pydantic-settings>=2.9.1",
+    "sqlalchemy>=2.0.40",
+    "twilio>=9.6.1",
+]
