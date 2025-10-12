@@ -3,7 +3,7 @@ from src.base.model import BaseModel
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from src.service.state import RegistrationState
+
 
 
 class User(BaseModel):
@@ -29,7 +29,7 @@ class User(BaseModel):
     
     mono_session_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, unique=True)
     
-    registration_state = Column(JSON, default=lambda: RegistrationState().to_dict())
+    
     
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

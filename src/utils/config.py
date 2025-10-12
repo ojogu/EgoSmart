@@ -14,7 +14,7 @@ class Config(BaseSettings):
     GOOGLE_GENAI_USE_VERTEXAI: str
     MONO_PUBLIC_KEY:str
     MONO_SECRET_KEY:str
-    WHATSAPP_KEY:str 
+    ACCESS_TOKEN:str 
     PHONE_NUMBER_ID: str
     BUSINESS_ACCOUNT_ID: str
     VERIFY_TOKEN: str 
@@ -32,7 +32,6 @@ class Config(BaseSettings):
         env_file=Path(__file__).resolve().parent.parent.parent / ".env",  # Adjusted to point to the root directory
         env_file_encoding="utf-8",
     )
-
 config = Config()
 
 class Settings:

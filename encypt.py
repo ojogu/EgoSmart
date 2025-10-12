@@ -3,7 +3,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
 from src.utils.config import config
 # Replace these
-ACCESS_TOKEN = config.WHATSAPP_KEY # Your system user access token
+ACCESS_TOKEN = config.ACCESS_TOKEN # Your system user access token
 APP_ID = config.APP_ID
 APP_SECRET = config.APP_SECRET
 PHONE_NUMBER_ID = config.PHONE_NUMBER_ID

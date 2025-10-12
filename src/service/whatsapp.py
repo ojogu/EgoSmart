@@ -3,7 +3,7 @@ from src.utils.config import config
 import logging
 import aiohttp
 import asyncio
-
+from typing import Dict
 logger = logging.getLogger(__name__)
 file_handler = logging.FileHandler("src/logs/whatsapp.log")
 logger.addHandler(file_handler)
@@ -51,11 +51,11 @@ logger.propagate = False
         
 
 
-from typing import Dict
+
 
 class WhatsAppClient:
     def __init__(self, api_version: str = "v22.0"):
-        self.token = config.WHATSAPP_KEY
+        self.token = config.ACCESS_TOKEN
         self.phone_number_id = config.PHONE_NUMBER_ID
         self.api_version = api_version
         self.base_url = f"https://graph.facebook.com/{self.api_version}/{self.phone_number_id}/messages"

@@ -9,9 +9,6 @@ from src.agents.orchestrator import parse_message_generate_intent
 from src.service.user import UserService
 from src.utils.db import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.utils.config import config
-from src.service.state import RegistrationState
-from src.utils.countries import get_country_by_dial_code
 from src.utils.redis import get_redis
 
 logger = logging.getLogger(__name__)
@@ -21,6 +18,7 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.setLevel(logging.INFO)
 logger.propagate = False
+
 
 
 whatsapp_route = APIRouter(prefix="/whatsapp")
@@ -57,7 +55,7 @@ async def incoming_message(
     # Raw Body
     # body_bytes = await request.body()
     # body_str = body_bytes.decode("utf-8")  # Optional: decode from bytes
-
+    client = await get_redis()
     # JSON Body (optional, if known to be JSON)
     try:
         json_body:dict = await request.json()
@@ -105,12 +103,13 @@ async def incoming_message(
         return JSONResponse(status_code=400, content={"error": "Malformed webhook payload"})
     
     # Deduplication: check if message_id was already processed
-    if await get_redis.get(message_id):
+    
+    if await client.get(message_id):
         logger.warning(f"{message_id} duplicate - already processed")
         return JSONResponse(content={"status": "duplicate - already processed"}, status_code=200)
     
     # Mark message as processed (expires after 1 hour)
-    await get_redis.setex(message_id, 3600, "seen")
+    await client.setex(message_id, 3600, "seen")
     agent_msg = {
             "phone" :user_wa_id,
             "name": user_name,

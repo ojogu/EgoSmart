@@ -10,7 +10,7 @@ from src.base.exception import (
 )
 import logging
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from src.service.state import RegistrationState
+# from src.service.state import RegistrationState
 
 logger = logging.getLogger(__name__)
 file_handler = logging.FileHandler("src/logs/user.log")

@@ -17,7 +17,7 @@ class TemplateService:
 
     def __init__(self,  base_url: Optional[str] = None):
         self.waba_id = config.BUSINESS_ACCOUNT_ID
-        self.token = config.WHATSAPP_KEY
+        self.token = config.ACCESS_TOKEN
         self.template_url =  f"{self.BASE_URL}/{self.waba_id}/message_templates"
         self.headers = {
             "Authorization": f"Bearer {self.token}",

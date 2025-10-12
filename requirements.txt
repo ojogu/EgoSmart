@@ -1,4 +1,4 @@
-# uv pip install google-auth google-auth-oauthlib google-api-python-client google-adk google-generativeai litellm
+#  pip install uv add google-auth google-auth-oauthlib google-api-python-client google-adk google-generativeai litellm
 
 # uv pip install twilio
 

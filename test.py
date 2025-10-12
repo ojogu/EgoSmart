@@ -200,7 +200,7 @@ async def exchange_access_token() -> Dict:
     url = "https://graph.facebook.com/v19.0/oauth/access_token"
     app_id = config.APP_ID
     app_secret = config.APP_SECRET
-    short_lived_token = config.WHATSAPP_KEY  # Use current token!
+    short_lived_token = config.ACCESS_TOKEN  # Use current token!
 
     params = {
         "grant_type": "fb_exchange_token",
@@ -269,6 +269,6 @@ if __name__ == "__main__":
 #     logger.info(result)
 
     # Debug the WhatsApp token
-    debug_result = asyncio.run(debug_token(config.WHATSAPP_KEY))
+    debug_result = asyncio.run(debug_token(config.ACCESS_TOKEN))
     logger.info(debug_result)
 
