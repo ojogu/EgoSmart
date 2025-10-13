@@ -25,8 +25,13 @@ class Config(BaseSettings):
     MODEL_NAME: str = os.getenv("MODEL_NAME")
 
     # Payment/Fintech Keys (e.g., Mono)
-    MONO_PUBLIC_KEY: str = os.getenv("MONO_PUBLIC_KEY")
-    MONO_SECRET_KEY: str = os.getenv("MONO_SECRET_KEY")
+    MONO_TEST_PUBLIC_KEY: str = os.getenv("MONO_PUBLIC_KEY")
+    MONO_TEST_SECRET_KEY: str = os.getenv("MONO_SECRET_KEY")
+    
+    #LIVE_KEYS
+    MONO_LIVE_PUBLIC_KEY: str = os.getenv("MONO_PUBLIC_KEY")
+    MONO_LIVE_SECRET_KEY: str = os.getenv("MONO_SECRET_KEY")
+    BASE_URL: str = os.getenv("BASE_URL")
 
     # Messaging/Platform (e.g., WhatsApp/Meta)
     PHONE_NUMBER_ID: str = os.getenv("PHONE_NUMBER_ID")

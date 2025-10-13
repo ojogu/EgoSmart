@@ -12,9 +12,6 @@ class User(BaseModel):
     #from whatsapp
     whatsapp_phone_number: Mapped[str] = mapped_column(String, unique=True, nullable=False, primary_key=True)
     whatsapp_profile_name: Mapped[str] = mapped_column(String, nullable=True)
-    country_dial_code:Mapped[str] = mapped_column(String)
-    country_name: Mapped[str] = mapped_column(String)
-    country_code: Mapped[str] = mapped_column(String)
     
     #from google
     email: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
@@ -27,12 +24,8 @@ class User(BaseModel):
     google_refresh_token: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     google_access_token: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     
-    mono_session_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, unique=True)
+    mono_account_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, unique=True)
     
-    
-    
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 
@@ -67,7 +60,7 @@ class BvnStatus(str):
     VERIFIED = "verified"
     FAILED = "failed"
 class Profile(BaseModel):
-    ''' handles the user profile from mono, links to the user table using whatsapp num as fk'''
+    ''' handles the user profile from mono, links to the user table using whatsapp num as fk (mono lookup)'''
         #user data from mono bvn verification
     profile_id: Mapped[str] = mapped_column(String, unique=True, nullable=False, primary_key=True, autoincrement=True)
     bvn_verified: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)

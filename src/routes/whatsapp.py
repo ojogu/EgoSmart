@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response, status, 
 from fastapi.responses import JSONResponse, PlainTextResponse
 from src.service.whatsapp import WhatsAppClient
 from src.utils.config import config 
-from src.agents.agent import process_query_service
+from src.agents.process_query import process_query_service
 from src.service.user import UserService
 from src.utils.db import get_session
 from sqlalchemy.ext.asyncio import AsyncSession

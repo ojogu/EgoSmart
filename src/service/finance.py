@@ -1,16 +1,13 @@
+import aiohttp
 import httpx
 from src.utils.config import config
 from src.utils.redis import get_redis
-import logging
 from src.schemas.finance import BvnVerification, BvnVerificationResponse, OtpVerification, OtpVerificationResponse, BvnDetails, Account_linking_Initiate
-from src.model.user import Profile
 from src.service.user import UserService
 from src.utils.db import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends
 import json
-import httpx
-import redis.asyncio as redis
+from src.utils.http_client import http_client
 
 
 
@@ -33,6 +30,7 @@ class MonoService():
         
     
     async def verify_bvn(self, bvn:str, whatsapp_phone_number:str):
+        self.session = await http_client.get_session()
         user = await self.user_service.get_user_by_whatsapp_phone_number(whatsapp_phone_number) 
         if not user:
             raise ValueError("User not found")
@@ -118,18 +116,14 @@ class MonoService():
                 raise
 
             
-    async def linking_account_initation(self,**payload):
+    async def linking_account_initation(self, **payload):
         url = "https://api.withmono.com/v2/accounts/initiate"
-    #     payload ={
-    #     "name": "Samuel Olamide",
-    #     "email": "samuel@neem.com",
-    #     "redirect_url": " https://dbc9-102-90-118-79.ngrok-free.app/finance/webhook"
-    # }, #verify bvn, store to db, fetch user details 
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, json={**payload}, headers=self.headers)
-            logger.info(f"Response status code: {response.status_code}")
-            logger.info(f"Response JSON: {response.json()}")
+        
+        async with self.session as session:
+            async with session.post(url, json=payload, headers=self.headers) as response:
+                logger.info(f"Response status code: {response.status}")
+                response_json = await response.json()
+                logger.info(f"Response JSON: {response_json}")
             
             
 
