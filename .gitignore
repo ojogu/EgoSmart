@@ -15,7 +15,5 @@ token.pickle
 private.pem
 public.pem 
 
-src/logs/google.logs
-src/logs
-/home/ojogu/project/egosmart/src/logs
-src/logs
+
+logs

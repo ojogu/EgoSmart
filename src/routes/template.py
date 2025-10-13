@@ -1,27 +1,21 @@
 from fastapi import APIRouter, HTTPException, Request, Response, Body, status
 from fastapi.responses import JSONResponse
-from src.service.templates import TemplateService
+from src.service.templates import template_service
+from src.utils.log import setup_logger  # noqa: E402
 
-import logging
 template_route = APIRouter(prefix="/whatsapp")
-service = TemplateService()
 
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/template.log")
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
+logger = setup_logger(__name__, file_path="template.log")
+
 
 @template_route.post("/templates", status_code=201)
 async def create_template_endpoint(payload: dict = Body(...)):
     """
-    Create a new WhatsApp template.
+    route to create a new WhatsApp template (from admin side)
     """
     logger.info("Received request to create template with payload: %s", payload)
     try:
-        result = await service.create_template(payload)
+        result = await template_service.create_template(payload)
         logger.error(result)
         if "error" in result:
             logger.warning("Template creation failed: %s", result["error"])
@@ -42,7 +36,7 @@ async def create_template_endpoint(payload: dict = Body(...)):
 async def list_templates():
     logger.info("Received request to list templates")
     try:
-        result = await service.list_templates()
+        result = await template_service.list_templates()
         logger.info("Templates listed successfully")
         return JSONResponse(content=result)
     except Exception as e:
@@ -53,7 +47,7 @@ async def list_templates():
 async def delete_template(template_name: str):
     logger.info("Received request to delete template: %s", template_name)
     try:
-        result = await service.delete_template(template_name)
+        result = await template_service.delete_template(template_name)
         logger.info("Template deleted successfully: %s", template_name)
         return JSONResponse(content=result)
     except Exception as e:
@@ -64,7 +58,7 @@ async def delete_template(template_name: str):
 async def get_template_insights():
     logger.info("Received request to get template insights")
     try:
-        result = await service.get_template_insights()
+        result = await template_service.get_template_insights()
         logger.info("Template insights retrieved successfully")
         return JSONResponse(content=result)
     except Exception as e:

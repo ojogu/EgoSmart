@@ -10,13 +10,8 @@ from src.service.user import UserService
 from src.utils.db import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/google.log")
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="google.log")
 
 google_route = APIRouter(prefix="/google")
 

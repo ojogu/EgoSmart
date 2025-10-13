@@ -1,12 +1,9 @@
-import logging
 from fastapi import FastAPI
 from src.utils.db import init_db, drop_db
 from src.utils.redis import setup_redis
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
-from src.utils.config import Settings
-# from utils.config import Settings 
-from src.utils.config import logging_settings
+from src.utils.config import Settings 
 from src.auth.auth import auth_route
 from src.routes.whatsapp import whatsapp_route
 from src.routes.finance import finance_router
@@ -14,7 +11,10 @@ from src.routes.google import google_route
 from src.routes.whatsapp_flow import whatsapp_flow_route
 from src.routes.template import template_route
 from src.utils.exception import register_error_handlers
-setup_logging = logging_settings.setup_logging
+
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="main.log")
+
 
 # import ssl
 # print(ssl.OPENSSL_VERSION)
@@ -36,25 +36,21 @@ async def lifespan(app: FastAPI):
     """
     # await drop_db()
     # print(f"db dropped")
-    await setup_redis()
-    print(f"redis initalized")
-    
-    await init_db()
-    print(f"db initalized")
-    yield
+    try:
+        await setup_redis()
+        print("redis initialized")
+        
+        await init_db()
+        print("db initialized")
+        yield
+    except Exception as e:
+        logger.error(f"Error during startup: {str(e)}")
+        raise
     
     # await init_indexes()
     # yield
 
-    
-try:
-    setup_logging() #I initialised the logging configuration in config.py here. This ensures that all loggers in the app follow the pattern
-    logger = logging.getLogger(__name__)
-    logger.info("FastAPI application is starting...")
-except Exception as e:
-    print(f"Failed to set up logging: {e}")
-    logger.error(f"Failed to set up logging: {e}")
-    raise
+
 
 
 app = FastAPI(

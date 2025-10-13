@@ -1,16 +1,13 @@
 from twilio.rest import Client
 from src.utils.config import config
-import logging
 import aiohttp
 import asyncio
 from typing import Dict
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/whatsapp.log")
-logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
+from src.utils.log import setup_logger  # noqa: E402
+from datetime import datetime, timedelta
 
 
+logger = setup_logger(__name__, file_path="whatsapp.log")
 #Twilio 
 # def send_whatsapp_message(to_number, from_number, message_body):
 #     account_sid = config.Account_SID
@@ -52,10 +49,9 @@ logger.propagate = False
 
 
 
-
 class WhatsAppClient:
     def __init__(self, api_version: str = "v22.0"):
-        self.token = config.ACCESS_TOKEN
+        self.token = self._load_stored_token() or config.ACCESS_TOKEN
         self.phone_number_id = config.PHONE_NUMBER_ID
         self.api_version = api_version
         self.base_url = f"https://graph.facebook.com/{self.api_version}/{self.phone_number_id}/messages"
@@ -63,46 +59,43 @@ class WhatsAppClient:
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json"
         }
-        logger.info(f"WhatsAppClient initialized with phone_number_id={self.phone_number_id} and api_version={self.api_version}")
+        self.token_expiry = self._load_token_expiry()  # store and load this from DB too
+        logger.info(f"WhatsAppClient initialized with phone_number_id={self.phone_number_id}")
 
     async def _exchange_access_token(self) -> Dict:
-        """
-        Exchange a short-lived access token for a long-lived token.
-        """
         url = "https://graph.facebook.com/v19.0/oauth/access_token"
-        app_id = config.APP_ID
-        app_secret = config.APP_SECRET
-        short_lived_token = self.token  # Use current token
-
         params = {
             "grant_type": "fb_exchange_token",
-            "client_id": app_id,
-            "client_secret": app_secret,
-            "fb_exchange_token": short_lived_token
+            "client_id": config.APP_ID,
+            "client_secret": config.APP_SECRET,
+            "fb_exchange_token": self.token
         }
         logger.info("Attempting to exchange access token.")
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params=params) as resp:
-                    data: dict = await resp.json()
+                    data = await resp.json()
                     logger.info(f"Access token exchange response: {data}")
 
-                    new_token = data.get("access_token")
-                    if new_token:
+                    if "access_token" in data:
+                        new_token = data["access_token"]
                         self.token = new_token
-                        self.headers["Authorization"] = f"Bearer {self.token}"
-                        # Optionally: store this token somewhere
-
-                    return {
-                        "status": resp.status,
-                        "response": data
-                    }
+                        self.headers["Authorization"] = f"Bearer {new_token}"
+                        self.token_expiry = datetime.utcnow() + timedelta(days=55)
+                        self._store_token(new_token, self.token_expiry)
+                        return {"status": resp.status, "response": data}
+                    else:
+                        return {"status": resp.status, "response": data}
         except Exception as e:
             logger.exception(f"Exception during access token exchange: {e}")
-            return {
-                "status": "error",
-                "response": str(e)
-            }
+            return {"status": "error", "response": str(e)}
+
+    async def refresh_token_if_needed(self):
+        if not self.token_expiry or datetime.utcnow() >= (self.token_expiry - timedelta(days=5)):
+            logger.info("Access token is near expiry — refreshing...")
+            await self._exchange_access_token()
+
+
 
 
 
@@ -110,6 +103,7 @@ class WhatsAppClient:
         """
         Send a regular WhatsApp message (text, image, document, audio, etc.)
         """
+        await self.refresh_token_if_needed()
         payload = {
             "messaging_product": "whatsapp",
             "to": to,
@@ -157,6 +151,18 @@ class WhatsAppClient:
                 "response": str(e)
             }
 
+    # 🔐 Helper methods for persistence
+    def _store_token(self, token: str, expiry: datetime):
+        # TODO: save to DB or file
+        logger.info("Storing refreshed token securely")
+
+    def _load_stored_token(self) -> str:
+        # TODO: load from DB or file
+        return None
+
+    def _load_token_expiry(self) -> datetime:
+        # TODO: load expiry from DB or file
+        return None
 
 # 🔧 Usage Example
 # async def main():

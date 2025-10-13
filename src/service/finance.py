@@ -15,13 +15,8 @@ import redis.asyncio as redis
 
 
 
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/finance.log")
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="finance.log")
 
 # def get_user_service(db: AsyncSession = get_session()):
 #     return UserService(db=db)

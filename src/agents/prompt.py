@@ -1,5 +1,4 @@
-def parse_agent_prompt():
-  return """
+SYSTEM_PROMPT = """
 # 🧠 ÈgòSmart | Master Orchestrator Agent
 
 ## 👤 Persona & Core Directive

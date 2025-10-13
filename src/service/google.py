@@ -3,21 +3,16 @@ from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
+from pathlib import Path
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import os
-import logging 
 # from src.schemas.schema import User 
 from src.utils.config import config
 
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="google.log")
 
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/google.log")
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
 
 class GoogleAuthService:
     SCOPES = [
@@ -143,7 +138,5 @@ class GoogleAuthService:
         return creds
 
 
-from pathlib import Path
-import logging
 CLIENT_SECRET_PATH = Path(__file__).resolve().parent.parent.parent / "client_secret.json"
 google_service = GoogleAuthService(client_secret_file=str(CLIENT_SECRET_PATH), redirect_uri="https://egosmart.loca.lt")

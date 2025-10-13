@@ -11,13 +11,8 @@ from fastapi import Depends
 import base64
 from fastapi.responses import JSONResponse
 
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/finance.log")
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="finance.log")
 
 finance_router = APIRouter(prefix="/finance")
 

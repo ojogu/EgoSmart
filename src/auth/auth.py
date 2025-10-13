@@ -10,13 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pathlib import Path
 import json
 
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/auth.log")
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="auth.log")
 
 def get_user_service(db: AsyncSession = Depends(get_session)):
     return UserService(db=db)

@@ -2,13 +2,8 @@ from src.agents.agent import AgentManager, call_agent_and_log
 import logging
 from .prompt import account_linking_prompt
 
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/agent.log")
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.setLevel(logging.DEBUG)
-logger.propagate = False
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="agent.log")
 
 async def account_linking_agent(msg:str, user_id:str, session_id:str):
     agent_manager = AgentManager()

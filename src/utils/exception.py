@@ -1,5 +1,4 @@
-import os
-import logging
+from datetime import datetime, timezone
 from typing import Any, Callable, Dict
 from fastapi import FastAPI, Request, HTTPException, status
 from src.base.schema import ErrorResponse
@@ -7,7 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from starlette.exceptions import HTTPException as StarletteHTTPException
+import json
 from src.base.exception import (
     Environment_Variable_Exception,
     InUseError,
@@ -25,23 +24,58 @@ from src.base.exception import (
     
     
 )
-# Setup exception logger
-exception_logger = logging.getLogger(__name__)
-exception_logger.setLevel(logging.ERROR)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="error.log")
 
-# Get the absolute path to the `logs` directory
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # this resolves to src/utils
-LOG_DIR = os.path.join(BASE_DIR, '..', 'logs')
-os.makedirs(LOG_DIR, exist_ok=True)
 
-file_handler = logging.FileHandler(os.path.join(LOG_DIR, 'error.log'))
-console_handler = logging.StreamHandler()
 
-file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-exception_logger.addHandler(file_handler)
-exception_logger.addHandler(console_handler)
+
+class AppError(Exception):
+    """Custom application error that can be raised across services."""
+
+    def __init__(self, source: str, error: Exception | str, data: dict | None = None, status_code: int = 500):
+        self.source = source
+        self.error = str(error) if isinstance(error, Exception) else error
+        self.data = data
+        self.status_code = status_code
+        self.timestamp = datetime.now(timezone.utc).isoformat()
+        super().__init__(self.error)
+
+    def to_dict(self) -> dict:
+        return {
+            "status": "error",
+            "source": self.source,
+            "data": self.data,
+            "message": self.error,
+            "timestamp": self.timestamp,
+        }
+
+
+def format_error(source: str, error: Exception | str, data: dict | None = None, raise_exc: bool = False) -> dict:
+    """
+    Format errors into a standard structure. Optionally raise AppError.
+
+    Args:
+        source (str): The source of the error.
+        error (Exception | str): The error to format.
+        data (dict | None): Optional payload.
+        raise_exc (bool): If True, raises AppError instead of returning dict.
+
+    Returns:
+        dict: Standardized error dictionary (if raise_exc=False).
+    """
+    app_error = AppError(source, error, data)
+
+    # Always log the dict form
+    logger.error(json.dumps(app_error.to_dict()))
+
+    if raise_exc:
+        raise app_error
+
+    return app_error.to_dict()
+
+
+
 
 
 def create_exception_handler(
@@ -51,7 +85,7 @@ def create_exception_handler(
     
     async def exception_handler(request: Request, exc: BaseExceptionClass):
         # Log the exception details
-        exception_logger.error(f"Exception occurred: {str(exc)}")
+        logger.error(f"Exception occurred: {str(exc)}")
 
         # Copy initial detail and override the message dynamically
         response_payload = initial_detail.copy()
@@ -263,7 +297,7 @@ def register_error_handlers(app: FastAPI):
     """
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
-        exception_logger.error(f"HTTP {exc.status_code}: {exc.detail}")
+        logger.error(f"HTTP {exc.status_code}: {exc.detail}")
         return JSONResponse(
             content={
                 "status": "error",
@@ -284,7 +318,7 @@ def register_error_handlers(app: FastAPI):
             error_details.append(f"{field}: {message}")
         
         error_message = "; ".join(error_details)
-        exception_logger.error(f"Validation error: {error_message}")
+        logger.error(f"Validation error: {error_message}")
         
         return JSONResponse(
             content={
@@ -298,7 +332,7 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(ValidationError)
     async def pydantic_validation_error_handler(request: Request, exc: ValidationError):
-        exception_logger.error(f"Pydantic validation error: {str(exc)}")
+        logger.error(f"Pydantic validation error: {str(exc)}")
         return JSONResponse(
             content={
                 "status": "error",
@@ -312,7 +346,7 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(IntegrityError)
     async def integrity_error_handler(request: Request, exc: IntegrityError):
-        exception_logger.error(f"Integrity error: {str(exc)}")
+        logger.error(f"Integrity error: {str(exc)}")
         return JSONResponse(
             content={
                 "status": "error",
@@ -326,7 +360,7 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(SQLAlchemyError)
     async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
-        exception_logger.error(f"Database error: {str(exc)}")
+        logger.error(f"Database error: {str(exc)}")
         return JSONResponse(
             content={
                 "status": "error",
@@ -340,7 +374,7 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(500)
     async def internal_server_error(request: Request, exc: Exception):
-        exception_logger.error(f"Internal server error: {str(exc)}")
+        logger.error(f"Internal server error: {str(exc)}")
         return JSONResponse(
             content={
                 "status": "error",
@@ -355,7 +389,7 @@ def register_error_handlers(app: FastAPI):
     # # General exception handler (catch-all)
     # @app.exception_handler(Exception)
     # async def general_exception_handler(request: Request, exc: Exception):
-    #     exception_logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    #     logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
     #     return JSONResponse(
     #         content={
     #             "status": "error",

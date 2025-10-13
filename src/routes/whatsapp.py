@@ -1,23 +1,16 @@
-import logging
+
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status, Depends
 from fastapi.responses import JSONResponse, PlainTextResponse
-from src.schemas.schema import Registration
 from src.service.whatsapp import WhatsAppClient
-from src.agents.agent import AgentManager, call_agent_and_log
 from src.utils.config import config 
-from src.agents.orchestrator import parse_message_generate_intent
+from src.agents.agent import process_query_service
 from src.service.user import UserService
 from src.utils.db import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.utils.redis import get_redis
 
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/whatsapp.log")
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="whatsapp.log")
 
 
 
@@ -110,15 +103,15 @@ async def incoming_message(
     
     # Mark message as processed (expires after 1 hour)
     await client.setex(message_id, 3600, "seen")
-    agent_msg = {
-            "phone" :user_wa_id,
-            "name": user_name,
-            "Message": message_body
-        }
-    agent = await parse_message_generate_intent(
-            msg = str (agent_msg),
-            user_id = user_wa_id,
-            session_id = "678"
+    # agent_msg = {
+    #         "phone" :user_wa_id,
+    #         "name": user_name,
+    #         "Message": message_body
+    #     }
+    agent = await process_query_service.process_query(
+            phone_number = user_wa_id, 
+            query=message_body,
+            username=user_name
         )
         
 

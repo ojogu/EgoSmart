@@ -5,14 +5,8 @@ import asyncio
 import logging
 from src.utils.config import config
 
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/template.log")
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.setLevel(logging.DEBUG)
-logger.propagate = False
-
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="flow.log")
 
 class MetaFlowManager:
     BASE_URL = "https://graph.facebook.com/v19.0"

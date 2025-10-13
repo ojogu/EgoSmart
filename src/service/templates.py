@@ -1,18 +1,18 @@
 import aiohttp
 from typing import Dict, Optional
-import logging
 from src.utils.config import config
 
 
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/template.log")
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.setLevel(logging.DEBUG)
-logger.propagate = False
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="whatsapp_template.log")
+
+
 
 class TemplateService:
+    """
+    service to create whatsapp template
+    """
+    
     BASE_URL = "https://graph.facebook.com/v19.0"
 
     def __init__(self,  base_url: Optional[str] = None):
@@ -29,7 +29,7 @@ class TemplateService:
             self.base_url = f"{self.BASE_URL}/{self.waba_id}/messages"
 
     async def create_template(self,  payload:dict) -> Dict:
-        logging.debug(f"Creating template with payload: {payload}")
+        logger.debug(f"Creating template with payload: {payload}")
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(self.template_url, headers=self.headers, json=payload) as response:
@@ -178,3 +178,5 @@ class TemplateService:
                 "status": "error",
                 "response": str(e)
             }
+            
+template_service = TemplateService()

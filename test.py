@@ -187,11 +187,8 @@ import logging
 import aiohttp
 import asyncio
 
-logger = logging.getLogger(__name__)
-file_handler = logging.FileHandler("src/logs/twillo.log")
-logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="test.log")
 
 async def exchange_access_token() -> Dict:
     """
