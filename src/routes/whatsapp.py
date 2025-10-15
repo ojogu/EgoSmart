@@ -39,15 +39,7 @@ async def incoming_message(
     whatsapp_service: WhatsAppClient = Depends(get_whatsapp_service),
     user_service: UserService = Depends(get_user_service)
 ):
-    # Headers
-    # headers = dict(request.headers)
 
-    # Query Parameters
-    # query_params = dict(request.query_params)
-
-    # Raw Body
-    # body_bytes = await request.body()
-    # body_str = body_bytes.decode("utf-8")  # Optional: decode from bytes
     client = await get_redis()
     # JSON Body (optional, if known to be JSON)
     try:
@@ -103,11 +95,13 @@ async def incoming_message(
     
     # Mark message as processed (expires after 1 hour)
     await client.setex(message_id, 3600, "seen")
-    # agent_msg = {
-    #         "phone" :user_wa_id,
-    #         "name": user_name,
-    #         "Message": message_body
-    #     }
+    
+    #store users in the db
+    user_data = {
+        "whatsapp_phone_number": user_wa_id,
+        "whatsapp_profile_name": user_name
+    }
+    user = await user_service.create_user(**user_data)
     agent = await process_query_service.process_query(
             phone_number = user_wa_id, 
             query=message_body,

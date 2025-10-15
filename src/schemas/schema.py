@@ -4,13 +4,13 @@ from typing import Dict, List, Optional
 from datetime import datetime, timezone
 
 
-class Registration(BaseModel):
+class CreateUser(BaseModel):
     whatsapp_phone_number: str
-    whatsapp_profile_name: str
-    country_name: Optional[str] = None
-    country_code : Optional[str] = None
-    country_dial_code: Optional[str] = None
-    country_flag: Optional[str] = None
+    whatsapp_profile_name: Optional[str] = None
+    # country_name: Optional[str] = None
+    # country_code : Optional[str] = None
+    # country_dial_code: Optional[str] = None
+    # country_flag: Optional[str] = None
 
 
 
@@ -26,22 +26,22 @@ class UserUpdate(BaseModel):
     refresh_token: str
     access_token: str
     
-class CreateUser(BaseModel):
-    whatsapp_phone_number: str
-    country_name: Optional[str] = None
-    country_code: Optional[str] = None
-    email: Optional[EmailStr] = None
-    google_id: Optional[str] = None
-    email_verified: Optional[bool] = None
-    oauth_verified: Optional[bool] = None
-    picture: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    onboarded: Optional[bool] = None
-    refresh_token: Optional[str] = None
-    access_token: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+# class CreateUser(BaseModel):
+#     whatsapp_phone_number: str
+#     country_name: Optional[str] = None
+#     country_code: Optional[str] = None
+#     email: Optional[EmailStr] = None
+#     google_id: Optional[str] = None
+#     email_verified: Optional[bool] = None
+#     oauth_verified: Optional[bool] = None
+#     picture: Optional[str] = None
+#     first_name: Optional[str] = None
+#     last_name: Optional[str] = None
+#     onboarded: Optional[bool] = None
+#     refresh_token: Optional[str] = None
+#     access_token: Optional[str] = None
+#     created_at: Optional[datetime] = None
+#     updated_at: Optional[datetime] = None
 
 
 

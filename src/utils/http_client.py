@@ -1,9 +1,11 @@
+import json
 import aiohttp
 from src.utils.log import setup_logger  # noqa: E402
 from src.utils.config import config
 from typing import Dict, Any
 from src.utils.exception import format_error
-logger = setup_logger(__name__, file_path="finance.log")
+
+logger = setup_logger(__name__, file_path="client.log")
 
 class HttpConfig:
     _instance = None
@@ -34,7 +36,7 @@ class HttpConfig:
             await self._session.close()
             self._session = None  # reset so it can be recreated
 
-http_client = HttpConfig()
+http_config = HttpConfig()
 
 
 class Client:
@@ -43,24 +45,21 @@ class Client:
         self.base_url = config.BASE_URL
         logger.debug(f"Base URL configured as: {self.base_url}")
 
-    async def _make_request(
+    async def make_request(
         self,
         http_method: str,
         endpoint: str,
         params: Dict = None,
         data: Dict = None,
-        token: str = None
+        headers: Dict = None,
     ) -> Dict[str, Any]:
         """Make HTTP request with JSON content type"""
 
-        self.session = await http_client.get_session()
+        self.session = await http_config.get_session()
         url = f"{self.base_url}{endpoint}"
         http_method = http_method.upper()
 
-        # Setup headers with JSON content type
-        headers = {"Content-Type": "application/json"}
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
+
 
         # Setup request arguments
         request_kwargs = {
@@ -80,22 +79,61 @@ class Client:
 
         try:
             async with self.session.request(**request_kwargs) as response:
-                return await self._handle_response(response, response.headers)
-
-        except aiohttp.ClientResponseError as e:
-            logger.error(
-                f"API request failed: Status={e.status}, Message={e.message}, "
-                f"URL={e.request_info.real_url}",
-                exc_info=True
-            )
-            return format_error(
-                source=__name__,
-                error=str(e)
-            )
+                return await self._handle_response(response)
 
         except Exception as e:
             logger.error(f"Unexpected error during API request: {str(e)}", exc_info=True)
+            # return structured error
+            return format_error(
+            source=__name__,
+            error=str(e),
+            status_code=500,
+            url=url,
+            ) 
+        # ========== Helper Method =============
+    async def _handle_response(self, response: aiohttp.ClientResponse):
+        """
+        Handle the response, raising clean errors when status is not OK.
+        """
+        try:
+            response.raise_for_status()
+            try:
+                response_json = await response.json()
+                logger.debug(f"Response JSON: {response_json}")
+                return response_json
+            except aiohttp.ContentTypeError:
+                response_text = await response.text()
+                logger.warning(f"Non-JSON response received: {response_text}")
+                return response_text
+
+        except aiohttp.ClientResponseError as e:
+            # Try to extract error body
+            error_details = None
+            try:
+                raw_body = await response.text()
+                try:
+                    error_details = json.loads(raw_body)
+                except json.JSONDecodeError:
+                    error_details = raw_body
+            except Exception:
+                error_details = None
+
+            # Log everything clearly
+            logger.error(
+                f"Request failed — Status: {e.status}, Message: {e.message or 'Unknown'}, "
+                f"URL: {e.request_info.real_url}, Body: {error_details}",
+                exc_info=True
+            )
+
+            # return structured error
             return format_error(
                 source=__name__,
-                error=str(e)
+                error=e.message,
+                status_code=e.status,
+                url=str(e.request_info.real_url),
+                details=error_details
             )
+
+
+
+http_client = Client()

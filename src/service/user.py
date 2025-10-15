@@ -1,19 +1,19 @@
 from typing import Optional
 import uuid
-from src.schemas.schema import UserUpdate, CreateUser, Registration
-from src.model.user import User, Profile 
+from src.schemas.schema import UserUpdate, CreateUser
+from src.model.user import User 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, update
 from src.base.exception import (
     AlreadyExistsError,
     DatabaseError
 )
-import logging
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-# from src.service.state import RegistrationState
+
 
 from src.utils.log import setup_logger  # noqa: E402
 logger = setup_logger(__name__, file_path="user.log")
+
 
 class UserService:
     """Service layer for user-related operations."""
@@ -42,7 +42,7 @@ class UserService:
         )
         return result.scalar_one_or_none()
 
-    async def create_user(self, user_data: Registration) -> User:
+    async def create_user(self, user_data: CreateUser) -> User:
         """Create a new user."""
         # Check if phone_number already exists
         existing_user = await self.get_user_by_whatsapp_phone_number(user_data.whatsapp_phone_number)
@@ -51,7 +51,7 @@ class UserService:
             return existing_user
     
         new_user = User(
-            **user_data.model_dump(exclude={"country_flag"})
+            **user_data.model_dump()
         )
         logger.info(f"Creating new user with WhatsApp phone number: {new_user.whatsapp_phone_number}, ID: {new_user.unique_id}")
         self.db.add(new_user)
@@ -82,13 +82,16 @@ class UserService:
             await self.db.rollback()
             raise DatabaseError(f"Could not create user: {e}") from e
 
-    async def check_missing_profile_fields(self, user_id: str) -> dict:
+
+    async def check_missing_profile_fields(self, whatsapp_phone_number: str) -> dict:
         """Check if a user's profile has missing fields."""
-        user = await self.get_user_by_whatsapp_phone_number(user_id)
+        user = await self.get_user_by_whatsapp_phone_number(whatsapp_phone_number)
         if not user:
-            return {"user_profile_data": "user does not exist"}
+            logger.warning(f"user: {whatsapp_phone_number} does not exist, create user")
+            user = await self.create_user(whatsapp_phone_number)
+            logger.info(f"successfully created user: {whatsapp_phone_number}")
         
-        # Assuming user object has first_name, last_name, and email attributes
+
         is_missing = not all([user.first_name, user.last_name, user.email])
         return {"user_profile_data": is_missing}
 
@@ -103,15 +106,14 @@ class UserService:
         try:
             user = await self.get_user_by_whatsapp_phone_number(whatsapp_phone_number)
             if not user:
-                logger.info(f"User with WhatsApp number {whatsapp_phone_number} not found.")
-                return (f"User with WhatsApp number {whatsapp_phone_number} not found.")
-                # return None
-
+                logger.warning(f"user: {whatsapp_phone_number} does not exist, create user")
+                user = await self.create_user(whatsapp_phone_number)
+                logger.info(f"successfully created user: {whatsapp_phone_number}")
+                
             # Check if any of the fields are missing
             if not (user.first_name is None or user.last_name is None or user.email is None):
                 logger.info(f"Profile for {whatsapp_phone_number} is already complete. No update needed.")
-                # return user
-                return (f"Profile for {whatsapp_phone_number} is already complete. No update needed.")
+                return user
 
             # Perform the update
             logger.info(f"Updating profile for user {whatsapp_phone_number}")
@@ -123,15 +125,23 @@ class UserService:
             await self.db.refresh(user)
             
             logger.info(f"Successfully updated profile for user {whatsapp_phone_number}")
-            return (f"Successfully updated profile for user {whatsapp_phone_number}")
+            return user
+        
             # return user
         except SQLAlchemyError as e:
             await self.db.rollback()
             logger.error(f"Error updating profile for {whatsapp_phone_number}: {e}")
             raise DatabaseError(f"Could not update profile: {e}") from e
 
+
         
-        
+    #  {
+    #      "whatsapp_phone_number",
+    #      "message"
+    #      "firstname"
+    #      "lastname"
+    #      "email"
+    #  }   
     # async def update_user(
     #     self, user_id: uuid.UUID, update_data: UpdateUserRequest, requesting_user: User
     # ) -> User:

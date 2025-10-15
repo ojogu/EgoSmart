@@ -33,25 +33,52 @@ logger = setup_logger(__name__, file_path="error.log")
 class AppError(Exception):
     """Custom application error that can be raised across services."""
 
-    def __init__(self, source: str, error: Exception | str, data: dict | None = None, status_code: int = 500):
+    def __init__(
+        self, 
+        source: str, 
+        error: Exception | str, 
+        data: dict | None = None, 
+        status_code: int = 500,
+        url: str | None = None,
+        details: dict | None = None
+    ):
         self.source = source
         self.error = str(error) if isinstance(error, Exception) else error
         self.data = data
         self.status_code = status_code
+        self.url = url
+        self.details = details
         self.timestamp = datetime.now(timezone.utc).isoformat()
         super().__init__(self.error)
 
     def to_dict(self) -> dict:
-        return {
+        error_dict = {
             "status": "error",
             "source": self.source,
-            "data": self.data,
             "message": self.error,
             "timestamp": self.timestamp,
         }
+        
+        # Add optional fields if they exist
+        if self.data:
+            error_dict["data"] = self.data
+        if self.url:
+            error_dict["url"] = self.url  
+        if self.details:
+            error_dict["details"] = self.details
+
+        return error_dict
 
 
-def format_error(source: str, error: Exception | str, data: dict | None = None, raise_exc: bool = False) -> dict:
+def format_error(
+    source: str, 
+    error: Exception | str, 
+    data: dict | None = None, 
+    url: str | None = None,
+    details: dict | None = None,
+    status_code: int = 500,
+    raise_exc: bool = False
+) -> dict:
     """
     Format errors into a standard structure. Optionally raise AppError.
 
@@ -59,12 +86,14 @@ def format_error(source: str, error: Exception | str, data: dict | None = None, 
         source (str): The source of the error.
         error (Exception | str): The error to format.
         data (dict | None): Optional payload.
+        url (str | None): Optional URL where error occurred.
+        details (dict | None): Optional error details.
         raise_exc (bool): If True, raises AppError instead of returning dict.
 
     Returns:
         dict: Standardized error dictionary (if raise_exc=False).
     """
-    app_error = AppError(source, error, data)
+    app_error = AppError(source, error, data, url=url, details=details)
 
     # Always log the dict form
     logger.error(json.dumps(app_error.to_dict()))
@@ -339,7 +368,7 @@ def register_error_handlers(app: FastAPI):
                 "message": "Validation error",
                 "error_code": "pydantic_validation_error",
                 "data": exc.json(),
-                "model": exc.model.__name__ 
+                "model": exc.title
             },
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
         )

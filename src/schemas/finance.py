@@ -1,12 +1,8 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field
+from typing import List, Optional
 from enum import Enum
 
-class MonoWebhook(BaseModel): 
-    pass
-
-
-#initating linking of account
+#===========initating linking of account=========
 class Customer(BaseModel):
     name: str
     email: EmailStr
@@ -18,12 +14,76 @@ class InstiutionData(BaseModel):
 class Meta(BaseModel):
     ref: Optional[str] = None
 
-class Account_linking_Initiate(BaseModel):
+
+class AccountlinkingInitiate(BaseModel):
     customer: Customer
-    institution: Optional[InstiutionData] = None
+    # institution: Optional[InstiutionData] = None
     scope: str  = "auth"
     meta: Optional[Meta] = None
-    redirect_url:str =  "https://147085bcc9fa.ngrok-free.app/finance/webhook"
+    redirect_url:str =  "https://1828ebe0e0b2.ngrok-free.app/redirect-url"
+
+
+class AccountLinkingResponseData(BaseModel):
+    mono_url: str
+    customer: str
+    meta: Meta
+    scope: str
+    redirect_url: str
+    created_at: str
+
+class AccountLinkingResponse(BaseModel):
+    status: str
+    message: str
+    timestamp: str
+    data: AccountLinkingResponseData
+
+
+
+
+# ============Webhook================
+class Institution(BaseModel):
+    name: Optional[str]
+    bankCode: Optional[str]
+    type: Optional[str]
+
+class AccountInfo(BaseModel):
+    _id: Optional[str]
+    name: Optional[str]
+    accountNumber: Optional[str]
+    currency: Optional[str]
+    balance: Optional[int]
+    type: Optional[str]
+    bvn: Optional[str]
+    authMethod: Optional[str]
+    institution: Optional[Institution]
+    created_at: Optional[str]
+    updated_at: Optional[str]
+
+class MetaInfo(BaseModel):
+    ref: Optional[str]
+    data_status: Optional[str]
+    auth_method: Optional[str]
+    retrieved_data: Optional[List[str]] = []
+
+class WebhookData(BaseModel):
+    id: Optional[str]
+    customer: Optional[str]
+    account: Optional[AccountInfo]
+    meta: Optional[MetaInfo] = Field(default_factory=MetaInfo)
+
+class MonoWebhook(BaseModel):
+    event: str
+    data: WebhookData
+
+
+
+
+
+
+
+
+
+
 
 
 class BvnVerification(BaseModel):
