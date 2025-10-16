@@ -34,8 +34,8 @@ async def lifespan(app: FastAPI):
     Yields:
         None: This function yields control back to the application after startup.
     """
-    # await drop_db()
-    # print(f"db dropped")
+    await drop_db()
+    print("db dropped")
     try:
         await setup_redis()
         print("redis initialized")

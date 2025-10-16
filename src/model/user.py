@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, String,  Enum as SqlEnum
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String,  Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship, backref
-
+from enum import Enum
 from src.base.model import BaseModel
 
 class Status(Enum):
@@ -57,8 +57,6 @@ class GoogleAccount(BaseModel):
 class AccountLinking(BaseModel):
     __tablename__ = "account_linkings"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-
     # from the initiation response
     reference: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)  # "ref"
     customer_id: Mapped[Optional[str]] = mapped_column(String, unique=True)  # "customer"
@@ -77,12 +75,17 @@ class AccountLinking(BaseModel):
     currency: Mapped[Optional[str]] = mapped_column(String)
     bvn: Mapped[Optional[str]] = mapped_column(String)
     auth_method: Mapped[Optional[str]] = mapped_column(String)
+    external_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
     # optional — useful to store extra fields like retrieved_data
     meta: Mapped[Optional[dict]] = mapped_column(JSONB)
 
     status: Mapped[Status] = mapped_column(
-        SqlEnum(Status), default=Status.PENDING, nullable=False
+        SqlEnum(Status, name="status_enum"), default=Status.PENDING, nullable=False
     )
 
     # relationship to user
@@ -111,11 +114,11 @@ class BanKDetails(BaseModel):
     bank_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     branch_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     bank_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
+    # created_at: Mapped[datetime] = mapped_column(
+    #     DateTime(timezone=True),
+    #     default=lambda: datetime.now(timezone.utc),
+    #     nullable=False,
+    # )
 
     user_id: Mapped[str] = mapped_column(
         String,

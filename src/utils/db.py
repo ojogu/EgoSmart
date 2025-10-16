@@ -49,14 +49,18 @@ async def init_db():
         print(Base.metadata.tables.keys())
 
 async def drop_db():
+    """
+    Drop all tables in the database.
+
+    This asynchronous function uses the SQLAlchemy engine to drop all tables
+    that are defined in the Base metadata. It's typically used when you want
+    to completely reset the database structure.
+
+    Caution: This operation will delete all data in the tables. Use with care.
+    """
     async with engine.begin() as conn:
-        print("dropping tables manually in correct order...")
-
-        await conn.execute(text("DROP TABLE IF EXISTS agents CASCADE"))
-        await conn.execute(text("DROP TABLE IF EXISTS conversation_states CASCADE"))
-        await conn.execute(text("DROP TABLE IF EXISTS users CASCADE"))
-
-        print("tables dropped!")
+        # Use run_sync to call the synchronous drop_all method in an async context
+        await conn.run_sync(Base.metadata.drop_all)
 
 
 

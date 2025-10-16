@@ -3,6 +3,27 @@ from typing import List, Optional
 from enum import Enum
 
 #===========initating linking of account=========
+
+# Utility function to transform the raw flat payload into the required structure
+def format_account_linking_payload(first_name: str, last_name: str, email: EmailStr, meta_ref: str):
+    return {
+        "customer": {
+            "name": f"{first_name} {last_name}",
+            "email": email
+        },
+        "scope": "auth",
+        "meta": {
+            "ref": meta_ref
+        },
+        "redirect_url": "https://1828ebe0e0b2.ngrok-free.app/redirect-url"
+    }
+
+class FlatAccountRequest(BaseModel):
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone_number:str
+    
 class Customer(BaseModel):
     name: str
     email: EmailStr

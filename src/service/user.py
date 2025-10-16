@@ -42,7 +42,7 @@ class UserService:
         )
         return result.scalar_one_or_none()
 
-    async def create_user(self, user_data: CreateUser) -> User:
+    async def create_user(self, **user_data: CreateUser) -> User:
         """Create a new user."""
         # Check if phone_number already exists
         existing_user = await self.get_user_by_whatsapp_phone_number(user_data.whatsapp_phone_number)

@@ -31,7 +31,7 @@ class BaseModel(Base):
     
     __abstract__ = True
     # Optional: Define common columns or methods for all models
-    unique_id = sa.Column(sa.UUID, primary_key=True, default=uuid.uuid4)
+    id = sa.Column(sa.UUID, primary_key=True, default=uuid.uuid4)
     created_at = sa.Column(sa.DateTime(timezone=True), default=sa.func.now())
     updated_at = sa.Column(sa.DateTime(timezone=True), default=sa.func.now(), onupdate=sa.func.now())
     deleted_at = sa.Column(sa.DateTime, nullable=True)

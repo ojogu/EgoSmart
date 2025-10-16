@@ -340,23 +340,35 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
-        error_details = []
+        """
+        Custom handler for Pydantic validation errors.
+        Produces a structured, developer-friendly and user-friendly error response.
+        """
+        # Transform errors into a clean, readable structure
+        formatted_errors = []
         for error in exc.errors():
-            field = " -> ".join(str(loc) for loc in error["loc"])
-            message = error["msg"]
-            error_details.append(f"{field}: {message}")
-        
-        error_message = "; ".join(error_details)
-        logger.error(f"Validation error: {error_message}")
-        
+            loc_path = " -> ".join(str(loc) for loc in error.get("loc", []))
+            formatted_errors.append({
+                "field": loc_path,
+                "type": error.get("type", "unknown_error"),
+                "message": error.get("msg", "Invalid value"),
+                "input": error.get("input", None)
+            })
+
+        # Build human-readable message for quick logs
+        error_messages = "; ".join([f"{err['field']}: {err['message']}" for err in formatted_errors])
+        logger.error(f"Validation error on {request.url}: {error_messages}")
+
+        # Final clean response structure
         return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "status": "error",
-                "message": error_message,
+                "message": error_messages,
                 "error_code": "validation_error",
-                "data": exc.errors(),
-            },
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+                "model": exc.title if hasattr(exc, "title") else "ValidationError",
+                "data": formatted_errors
+            }
         )
 
     @app.exception_handler(ValidationError)
