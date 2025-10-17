@@ -2,13 +2,26 @@ import uuid
 from sqlalchemy import select
 from src.model.user import AccountLinking, Status
 from src.utils.config import config
-from src.schemas.finance import BvnVerification, BvnVerificationResponse, MonoWebhook, OtpVerification, OtpVerificationResponse, BvnDetails, AccountlinkingInitiate, AccountLinkingResponse, format_account_linking_payload
+from src.schemas.finance import (
+    BvnVerification, 
+    BvnVerificationResponse, 
+    OtpVerification,
+    OtpVerificationResponse, 
+    BvnDetails,
+    
+    AccountlinkingInitiate, 
+    AccountLinkingResponse, 
+
+    format_account_linking_payload
+    )
 from src.service.user import UserService
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.utils.http_client import http_client
+from datetime import datetime, timezone
+from pydantic import BaseModel
+from typing import TypeVar
 
-
-
+T = TypeVar("T", bound=BaseModel)
 
 from src.utils.log import setup_logger  # noqa: E402
 logger = setup_logger(__name__, file_path="finance.log")
@@ -28,6 +41,17 @@ class MonoService():
         Example output: 'a1b2c3d4e5f6'
         """
         return uuid.uuid4().hex[:12] 
+    
+    
+    @staticmethod
+    def to_datetime(dt_str: str) -> datetime:
+        """
+        Convert an ISO 8601 datetime string (e.g. '2025-10-16T10:05:56.354Z')
+        into a timezone-aware datetime object.
+        """
+        if dt_str.endswith("Z"):
+            dt_str = dt_str.replace("Z", "+00:00")
+        return datetime.fromisoformat(dt_str).astimezone(timezone.utc)
             
     async def linking_account_initation(self, whatsapp_phone_number:str, **kwargs):
         """
@@ -36,7 +60,7 @@ class MonoService():
         :param payload: The payload for the initiation request (e.g., account details).
         """
         #fetch user
-        user = await self.user_service.get_user_by_whatsapp_phone_number(whatsapp_phone_number)
+        user = await self.user_service.create_user(whatsapp_phone_number=whatsapp_phone_number)
         
         # Ensure 'meta' exists and is a dict
         meta_ref = kwargs.get("meta", {}).get("ref") if kwargs.get("meta") else None
@@ -78,116 +102,100 @@ class MonoService():
             nested_data = validated_data.get("data", {})
             mono_url = nested_data.get("mono_url", "")
             customer_id = nested_data.get("customer", "")
-            created_at = nested_data.get("created_at", "")
+            created_at = self.to_datetime(nested_data.get("created_at", ""))
             
             # nested under "data" -> "meta"
             meta = nested_data.get("meta", {})
             ref = meta.get("ref", "")
             
+        except Exception as e:
+            logger.error(f"Error processing Mono account linking initiation response: {e}", exc_info=True)
+            raise # Re-raise the exception after logging
+        
+        try:
             #writing to the db
             account_link = AccountLinking(
-                user_id = user,
-                status=status,
+                user_id = user.whatsapp_phone_number,
+                status=Status.PENDING,
                 customer_id= customer_id,
                 reference = ref,
                 external_created_at = created_at
                 
             )
-            logger.info(f"save details for user {user.id} to the db:")
-        except Exception as e:
-            logger.error(f"Error processing Mono account linking initiation response: {e}", exc_info=True)
-            raise # Re-raise the exception after logging
-
-        
-        return mono_url
-            
-            
-    async def handle_mono_webhook(self, payload: "MonoWebhook"):
-        event = payload.event
-        data = payload.data
-
-        logger.info(f"Received Mono webhook for event: {event}")
-        # Determine reference (comes from meta.ref or can be inferred later)
-        ref = None
-        if data.meta and data.meta.ref:
-            ref = data.meta.ref
-            logger.info(f"Reference found in webhook meta: {ref}")
-        else:
-            # In case ref is not in webhook (like account_connected), find by customer_id
-            logger.info(f"Reference not in meta, attempting to find by customer_id: {data.customer}")
-            try:
-                stmt = select(AccountLinking).where(AccountLinking.customer_id == data.customer)
-                result = await self.db.execute(stmt)
-                ref_record = result.scalars().first()
-                
-                if ref_record:
-                    ref = ref_record.reference
-                    logger.info(f"Reference found by customer_id: {ref}")
-                else:
-                    logger.warning(f"No account linking record found for customer_id {data.customer}")
-            except Exception as e:
-                logger.error(f"Error fetching account linking by customer_id {data.customer}: {e}", exc_info=True)
-                return
-
-        if not ref:
-            logger.error("Reference not found after attempting to infer. Cannot process webhook.")
-            return
-
-        # Fetch existing account linking
-        logger.info(f"Fetching existing account linking for reference: {ref}")
-        try:
-            stmt = select(AccountLinking).where(AccountLinking.reference == ref)
-            result = await self.db.execute(stmt)
-            account_link = result.scalars().first()
-        except Exception as e:
-            logger.error(f"Error fetching account linking for ref {ref}: {e}", exc_info=True)
-            return
-
-        if not account_link:
-            logger.error(f"No account linking found for ref {ref}. This should not happen as initiation creates the record.")
-            return
-
-        # Update based on the event type
-        logger.info(f"Updating account linking for ref {ref} with event: {event}")
-        account_link.event = event
-
-        # Account connected event
-        if event == "mono.events.account_connected":
-            logger.info(f"Handling account_connected event for ref {ref}")
-            account_link.mono_id = data.id
-
-        # Account updated event
-        if event == "mono.events.account_updated" and data.account:
-            logger.info(f"Handling account_updated event for ref {ref}")
-            acc = data.account
-            inst = acc.institution
-
-            account_link.mono_id = acc._id or account_link.mono_id
-            account_link.account_name = acc.name
-            account_link.account_number = acc.accountNumber
-            account_link.currency = acc.currency
-            account_link.account_type = acc.type
-            account_link.bvn = acc.bvn
-            account_link.auth_method = acc.authMethod
-
-            if inst:
-                account_link.bank_name = inst.name
-                account_link.bank_code = inst.bankCode
-
-            account_link.meta = data.meta.model_dump() if data.meta else {}
-            account_link.status = Status.SUCCESS
-        
-        try:
+            # logger.info(f"type for user: {type(user)}")
+            logger.info(f"save details for user {user.id} to the db with record: {account_link.reference}")
             self.db.add(account_link)
+            await self.db.flush()
             await self.db.commit()
             await self.db.refresh(account_link)
-            logger.info(f"Account linking record for ref {ref} updated successfully.")
+            logger.info(f"Account linking record for ref {account_link.reference} updated successfully.")
         except Exception as e:
             logger.error(f"Error updating account linking record for ref {ref}: {e}", exc_info=True)
             await self.db.rollback() # Rollback in case of error
             return
 
-        return account_link
+        
+        return mono_url
+            
+            
+    async def handle_mono_webhook(self, event: str, data: T):
+        logger.info(f"Received Mono webhook for event: {event}")
+        logger.info(f"Received Mono webhook:{data}")
+
+        ref = None
+        if hasattr(data, "meta") and getattr(data.meta, "ref", None):
+            ref = data.meta.ref
+            logger.info(f"Reference found in webhook meta: {ref}")
+        else:
+            if hasattr(data, "customer"):
+                logger.info(f"Reference not in meta, attempting to find by customer_id: {data.customer}")
+                # lookup ref by customer id here
+                stmt = select(AccountLinking.reference).where(AccountLinking.customer_id==data.customer)
+                result = await self.db.execute(stmt)
+                ref = result.scalars().first()
+                logger.info(f"found reference from db: {ref}")
+
+        if not ref:
+            logger.error("Reference not found after attempting to infer. Cannot process webhook.")
+            return
+
+        # fetch account_linking and update
+        stmt = select(AccountLinking).where(AccountLinking.reference == ref)
+        result = await self.db.execute(stmt)
+        account_link = result.scalars().first()
+        if not account_link:
+            logger.error(f"No account linking found for ref {ref}")
+            return
+
+        account_link.event = event
+        account_link.status = Status.SUCCESS
+
+        if event == "mono.events.account_connected":
+            account_link.mono_id = data.id
+            return account_link
+        elif event == "mono.events.account_updated":
+            acc = data.account
+            inst = acc.institution
+            meta = data.meta
+
+            account_link.mono_id = acc.id
+            account_link.account_name = acc.name
+            account_link.account_number = acc.accountNumber
+            account_link.currency = acc.currency
+            account_link.balance = acc.balance
+            account_link.account_type = acc.type
+            account_link.bvn = acc.bvn
+            account_link.data_status = Status(meta.data_status.lower())
+            account_link.auth_method = acc.authMethod
+            account_link.bank_name = inst.name
+            account_link.bank_code = inst.bankCode
+            account_link.meta = meta.model_dump()
+
+        self.db.add(account_link)
+        await self.db.commit()
+        await self.db.refresh(account_link)
+        logger.info(f"Account linking record for ref {ref} updated successfully.")
+
    
    
    

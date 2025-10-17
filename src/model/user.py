@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String,  Enum as SqlEnum
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String,  Enum as SqlEnum, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship, backref
 from enum import Enum
 from src.base.model import BaseModel
@@ -11,6 +11,9 @@ class Status(Enum):
     VERIFIED = "verified"
     FAILED = "failed"
     SUCCESS = "successful"
+    AVAILABLE = "available"
+    UNAVAILABLE = "unavailable"
+    PARTIAL = "partial"
 
 class User(BaseModel):
 
@@ -34,11 +37,6 @@ class User(BaseModel):
     )
 
 
-    def __repr__(self) -> str:
-        return (
-            f"<User(whatsapp_phone_number={self.whatsapp_phone_number!r}, email={self.email!r}, "
-            f"first_name={self.first_name!r}, last_name={self.last_name!r})>"
-        )
 
 
 class GoogleAccount(BaseModel):
@@ -71,6 +69,7 @@ class AccountLinking(BaseModel):
     bank_code: Mapped[Optional[str]] = mapped_column(String)
     account_type: Mapped[Optional[str]] = mapped_column(String)  # e.g. SAVINGS_ACCOUNT
     account_number: Mapped[Optional[str]] = mapped_column(String)
+    balance: Mapped[Optional[int]] = mapped_column(Integer)
     account_name: Mapped[Optional[str]] = mapped_column(String)
     currency: Mapped[Optional[str]] = mapped_column(String)
     bvn: Mapped[Optional[str]] = mapped_column(String)
@@ -86,6 +85,9 @@ class AccountLinking(BaseModel):
 
     status: Mapped[Status] = mapped_column(
         SqlEnum(Status, name="status_enum"), default=Status.PENDING, nullable=False
+    )
+    data_status: Mapped[Status] = mapped_column(
+        SqlEnum(Status, name="data_status_enum"), default=Status.PENDING, nullable=False
     )
 
     # relationship to user

@@ -45,15 +45,16 @@ class UserService:
     async def create_user(self, **user_data: CreateUser) -> User:
         """Create a new user."""
         # Check if phone_number already exists
-        existing_user = await self.get_user_by_whatsapp_phone_number(user_data.whatsapp_phone_number)
+        validated_data = CreateUser(**user_data)
+        existing_user = await self.get_user_by_whatsapp_phone_number(validated_data.whatsapp_phone_number)
         if existing_user:
             logger.warning(F"user already exists: {existing_user}")
             return existing_user
     
         new_user = User(
-            **user_data.model_dump()
+            **validated_data.model_dump()
         )
-        logger.info(f"Creating new user with WhatsApp phone number: {new_user.whatsapp_phone_number}, ID: {new_user.unique_id}")
+        logger.info(f"Creating new user with WhatsApp phone number: {new_user.whatsapp_phone_number}, ID: {new_user.id}")
         self.db.add(new_user)
         try:
             await (
@@ -64,7 +65,7 @@ class UserService:
             )  # Refresh to get DB defaults like ID, created_at
             await self.db.commit()
             
-            return new_user.to_dict()
+            return new_user
         
         except IntegrityError as e:
             await self.db.rollback()
@@ -88,7 +89,7 @@ class UserService:
         user = await self.get_user_by_whatsapp_phone_number(whatsapp_phone_number)
         if not user:
             logger.warning(f"user: {whatsapp_phone_number} does not exist, create user")
-            user = await self.create_user(whatsapp_phone_number)
+            user = await self.create_user(whatsapp_phone_number=whatsapp_phone_number)
             logger.info(f"successfully created user: {whatsapp_phone_number}")
         
 
@@ -107,7 +108,7 @@ class UserService:
             user = await self.get_user_by_whatsapp_phone_number(whatsapp_phone_number)
             if not user:
                 logger.warning(f"user: {whatsapp_phone_number} does not exist, create user")
-                user = await self.create_user(whatsapp_phone_number)
+                user = await self.create_user(whatsapp_phone_number=whatsapp_phone_number)
                 logger.info(f"successfully created user: {whatsapp_phone_number}")
                 
             # Check if any of the fields are missing

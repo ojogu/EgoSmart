@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from enum import Enum
+from src.utils.config import config
 
 #===========initating linking of account=========
 
@@ -15,7 +16,8 @@ def format_account_linking_payload(first_name: str, last_name: str, email: Email
         "meta": {
             "ref": meta_ref
         },
-        "redirect_url": "https://1828ebe0e0b2.ngrok-free.app/redirect-url"
+        "redirect_url": config.REDIRECT_URL,
+   
     }
 
 class FlatAccountRequest(BaseModel):
@@ -41,7 +43,7 @@ class AccountlinkingInitiate(BaseModel):
     # institution: Optional[InstiutionData] = None
     scope: str  = "auth"
     meta: Optional[Meta] = None
-    redirect_url:str =  "https://1828ebe0e0b2.ngrok-free.app/redirect-url"
+    redirect_url:str =  config.REDIRECT_URL,
 
 
 class AccountLinkingResponseData(BaseModel):
@@ -68,7 +70,7 @@ class Institution(BaseModel):
     type: Optional[str]
 
 class AccountInfo(BaseModel):
-    _id: Optional[str]
+    id: Optional[str] = Field(alias="_id")
     name: Optional[str]
     accountNumber: Optional[str]
     currency: Optional[str]
@@ -79,23 +81,34 @@ class AccountInfo(BaseModel):
     institution: Optional[Institution]
     created_at: Optional[str]
     updated_at: Optional[str]
-
+    
+    class Config:
+        populate_by_name = True
+        
 class MetaInfo(BaseModel):
     ref: Optional[str]
     data_status: Optional[str]
     auth_method: Optional[str]
-    retrieved_data: Optional[List[str]] = []
+    retrieved_data: Optional[List[str]] = Field(default_factory=list)
 
-class WebhookData(BaseModel):
-    id: Optional[str]
-    customer: Optional[str]
-    account: Optional[AccountInfo]
-    meta: Optional[MetaInfo] = Field(default_factory=MetaInfo)
 
-class MonoWebhook(BaseModel):
+
+
+#============different mono events, so we can do routing based on each event
+class BaseMonoWebhook(BaseModel):
     event: str
-    data: WebhookData
+    data: Dict[str, Any] #accept anything for now
 
+
+class AccountConnectedEvent(BaseModel):
+    id:str
+    customer:str
+    meta: dict | None = None
+    
+
+class AccountUpdatedEvent(BaseModel):
+    account: AccountInfo
+    meta: MetaInfo
 
 
 

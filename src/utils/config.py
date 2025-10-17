@@ -44,6 +44,8 @@ class Config(BaseSettings):
     RSA: str = os.getenv("RSA") # Could be the path to a key or the key itself
     PRIVATE_KEY_PASSWORD: str = os.getenv("PRIVATE_KEY_PASSWORD")
     PUBLIC_KEY: str = os.getenv("PUBLIC_KEY")
+    
+    REDIRECT_URL: str = os.getenv("REDIRECT_URL")
 
     # Caching/Redis
     REDIS_HOST: str = os.getenv("REDIS_HOST")

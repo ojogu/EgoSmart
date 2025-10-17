@@ -1,13 +1,12 @@
 
 from fastapi import HTTPException, Request, APIRouter, status
 from fastapi.responses import JSONResponse
-from src.schemas.finance import MonoWebhook
 from src.service.finance import MonoService
 from src.service.user import UserService
 from src.utils.db import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
-from src.schemas.finance import FlatAccountRequest
+from src.schemas.finance import FlatAccountRequest, AccountUpdatedEvent, AccountConnectedEvent, BaseMonoWebhook
 from src.utils.log import setup_logger  # noqa: E402
 logger = setup_logger(__name__, file_path="finance.log")
 
@@ -20,15 +19,61 @@ def get_mono_service(db: AsyncSession = Depends(get_session)):
     return MonoService(db=db)
 
 
+EVENT_SCHEMAS = {
+    "mono.events.account_connected": AccountConnectedEvent,
+    "mono.events.account_updated": AccountUpdatedEvent,
+}
+
 @finance_router.post("/webhook")
-async def mono_webhook(payload: MonoWebhook, db: AsyncSession = Depends(get_session), mono_service:MonoService = Depends(get_mono_service)):
-    account_link = await mono_service.handle_mono_webhook(payload)
+async def mono_webhook(payload: BaseMonoWebhook, db: AsyncSession = Depends(get_session), mono_service:MonoService = Depends(get_mono_service)):
+    schema = EVENT_SCHEMAS.get(payload.event)
+    if not schema:
+        logger.warning(f"Unhandled event: {payload.event}")
+        return
+    data = schema(**payload.data)
+    account_link = await mono_service.handle_mono_webhook(payload.event, data)
     if not account_link:
         raise HTTPException(
             status_code=status.HTTP_202_ACCEPTED,
             detail="Webhook received but no matching record found"
         )
-    return {"message": "Webhook processed successfully", "name": account_link.account_name}
+    logger.info(f"Webhook processed successfully for user: {account_link.user_id}")
+    # return {"message": "Webhook processed successfully", "id": account_link.user_id}
+
+
+# @finance_router.post("/webhook")
+# async def mono_webhook(request: Request, payload: MonoWebhook, db: AsyncSession = Depends(get_session), mono_service:MonoService = Depends(get_mono_service)):
+    
+#     # Read the raw body
+#     body = await request.body()
+#     print("Raw body:", body.decode())
+
+#     # If it's JSON, parse it manually
+#     json_data = await request.json()
+#     logger.info(f"webhook data: {json_data}")
+    
+#     account_link = await mono_service.handle_mono_webhook(payload)
+#     if not account_link:
+#         raise HTTPException(
+#             status_code=status.HTTP_202_ACCEPTED,
+#             detail="Webhook received but no matching record found"
+#         )
+#     return {"message": "Webhook processed successfully", "name": account_link.account_name}
+
+
+# @finance_router.post("/webhook")
+# async def mono_webhook(request: Request, db: AsyncSession = Depends(get_session), mono_service: MonoService = Depends(get_mono_service)):
+#     # Read the raw body
+#     body = await request.body()
+#     print("Raw body:", body.decode())
+
+#     # If it's JSON, parse it manually
+#     json_data = await request.json()
+#     logger.info(f"webhook data: {json_data}")
+
+#     # Return something so webhook provider doesn’t timeout
+#     return {"status": "ok"}
+
 
 @finance_router.post("/initate-linking")
 async def initiate_linking(data:FlatAccountRequest, mono_service:MonoService = Depends(get_mono_service)):

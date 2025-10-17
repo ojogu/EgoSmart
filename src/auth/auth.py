@@ -19,42 +19,42 @@ def get_user_service(db: AsyncSession = Depends(get_session)):
 
 auth_route = APIRouter(prefix="/auth")
 
-@auth_route.get("/countries", response_class=JSONResponse)
-def get_countries():
-    json_file_path = Path(__file__).parent.parent / "utils" / "countries.json"
+# @auth_route.get("/countries", response_class=JSONResponse)
+# def get_countries():
+#     json_file_path = Path(__file__).parent.parent / "utils" / "countries.json"
 
-    if not json_file_path.exists():
-        return JSONResponse(
-            status_code=404,
-            content={"error": "Countries data not found"}
-        )
+#     if not json_file_path.exists():
+#         return JSONResponse(
+#             status_code=404,
+#             content={"error": "Countries data not found"}
+#         )
 
-    with open(json_file_path, "r", encoding="utf-8") as file:
-        countries = json.load(file)
+#     with open(json_file_path, "r", encoding="utf-8") as file:
+#         countries = json.load(file)
 
-    return countries
+#     return countries
 
 
-@auth_route.post("/register")
-async def register_user(data:dict, user_service = Depends(get_user_service)):
-    try:
-        existing_user = await user_service.get_user(full_number=data.full_number)
-        if existing_user:
-            logger.warning(f"User already exists: {data.full_number}")
-            raise HTTPException(status_code=400, detail="User already exists")
+# @auth_route.post("/register")
+# async def register_user(data:dict, user_service:UserService = Depends(get_user_service)):
+#     try:
+#         existing_user = await user_service.get_user(full_number=data.full_number)
+#         if existing_user:
+#             logger.warning(f"User already exists: {data.full_number}")
+#             raise HTTPException(status_code=400, detail="User already exists")
 
-        user_data = data.model_dump()
-        result = await user_service.create_user(**user_data)
-        logger.info(f"User registered successfully: {data.full_number}, user_id: {result}")
+#         user_data = data.model_dump()
+#         result = await user_service.create_user(**user_data)
+#         logger.info(f"User registered successfully: {data.full_number}, user_id: {result}")
 
-        return {
-            "message": "User number successfully registered",
-            # "user_id": str(result.inserted_id)
-            "user_id": result
-        }
-    except HTTPException as http_exc:
-        logger.error(f"HTTPException while registering user {data.full_number}: {http_exc.detail}")
-        raise
-    except Exception as e:
-        logger.error(f"Exception while registering user {data.full_number}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
+#         return {
+#             "message": "User number successfully registered",
+#             # "user_id": str(result.inserted_id)
+#             "user_id": result
+#         }
+#     except HTTPException as http_exc:
+#         logger.error(f"HTTPException while registering user {data.full_number}: {http_exc.detail}")
+#         raise
+#     except Exception as e:
+#         logger.error(f"Exception while registering user {data.full_number}: {str(e)}", exc_info=True)
+#         raise HTTPException(status_code=500, detail="Internal server error")
