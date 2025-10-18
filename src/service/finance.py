@@ -1,6 +1,6 @@
 import uuid
-from sqlalchemy import select
-from src.model.user import AccountLinking, Status
+from sqlalchemy import and_, select, update
+from src.model.user import AccountLinking, Status, User
 from src.utils.config import config
 from src.schemas.finance import (
     BvnVerification, 
@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.utils.http_client import http_client
 from datetime import datetime, timezone
 from pydantic import BaseModel
-from typing import TypeVar
+from typing import Optional, TypeVar
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -53,6 +53,7 @@ class MonoService():
             dt_str = dt_str.replace("Z", "+00:00")
         return datetime.fromisoformat(dt_str).astimezone(timezone.utc)
             
+    
     async def linking_account_initation(self, whatsapp_phone_number:str, **kwargs):
         """
         Initiates the Mono account linking process.
@@ -119,10 +120,12 @@ class MonoService():
                 status=Status.PENDING,
                 customer_id= customer_id,
                 reference = ref,
-                external_created_at = created_at
+                external_created_at = created_at,
+                linking_status = Status.LINKED_PENDING
                 
             )
             # logger.info(f"type for user: {type(user)}")
+            # expires_in = account_link.created_at
             logger.info(f"save details for user {user.id} to the db with record: {account_link.reference}")
             self.db.add(account_link)
             await self.db.flush()
@@ -133,8 +136,6 @@ class MonoService():
             logger.error(f"Error updating account linking record for ref {ref}: {e}", exc_info=True)
             await self.db.rollback() # Rollback in case of error
             return
-
-        
         return mono_url
             
             
@@ -157,46 +158,88 @@ class MonoService():
 
         if not ref:
             logger.error("Reference not found after attempting to infer. Cannot process webhook.")
-            return
+            return 
 
         # fetch account_linking and update
         stmt = select(AccountLinking).where(AccountLinking.reference == ref)
         result = await self.db.execute(stmt)
         account_link = result.scalars().first()
         if not account_link:
-            logger.error(f"No account linking found for ref {ref}")
+            logger.error(f"No account linking found for ref, initate one {ref}")
             return
 
-        account_link.event = event
-        account_link.status = Status.SUCCESS
+        try:
+            #fetch user 
+            user = None
+            stmt = (
+                select(User)
+                .join(AccountLinking, User.whatsapp_phone_number == AccountLinking.user_id)
+            )
+            result = await self.db.execute(stmt)
+            user = result.scalars().first()
+            account_link.event = event
+            account_link.status = Status.SUCCESS
 
-        if event == "mono.events.account_connected":
-            account_link.mono_id = data.id
-            return account_link
-        elif event == "mono.events.account_updated":
-            acc = data.account
-            inst = acc.institution
-            meta = data.meta
+            if event == "mono.events.account_connected":
+                account_link.mono_id = data.id
+            elif event == "mono.events.account_updated":
+                acc = data.account
+                inst = acc.institution
+                meta = data.meta
 
-            account_link.mono_id = acc.id
-            account_link.account_name = acc.name
-            account_link.account_number = acc.accountNumber
-            account_link.currency = acc.currency
-            account_link.balance = acc.balance
-            account_link.account_type = acc.type
-            account_link.bvn = acc.bvn
-            account_link.data_status = Status(meta.data_status.lower())
-            account_link.auth_method = acc.authMethod
-            account_link.bank_name = inst.name
-            account_link.bank_code = inst.bankCode
-            account_link.meta = meta.model_dump()
+                account_link.mono_id = acc.id
+                account_link.account_name = acc.name
+                account_link.account_number = acc.accountNumber
+                account_link.currency = acc.currency
+                account_link.balance = acc.balance
+                account_link.account_type = acc.type
+                account_link.bvn = acc.bvn
+                account_link.data_status = Status(meta.data_status.lower())
+                account_link.linking_status = Status.LINKED
+                account_link.auth_method = acc.authMethod
+                account_link.bank_name = inst.name
+                account_link.bank_code = inst.bankCode
+                account_link.meta = meta.model_dump()
 
-        self.db.add(account_link)
-        await self.db.commit()
-        await self.db.refresh(account_link)
-        logger.info(f"Account linking record for ref {ref} updated successfully.")
+            self.db.add(account_link)
+            await self.db.commit()
+            await self.db.refresh(account_link)
+            logger.info(f"Account linking record for ref {ref} updated successfully.")
 
-   
+            if event == "mono.events.account_connected":
+                return account_link
+        except Exception as e:
+            logger.error(f"Error processing Mono webhook for ref {ref}: {e}", exc_info=True)
+            # On failure, explicitly mark as FAILED
+            fail_stmt = (
+                update(AccountLinking)
+                .where(AccountLinking.user_id == user.whatsapp_phone_number)
+                .values(
+                    status=Status.FAILED,
+                    failure_reason=str(e),
+                    failed_at=datetime.now(timezone.utc)
+                )
+            )
+            await self.db.execute(fail_stmt)
+            logger.error(f"an error occrured: {str(e)}")
+            await self.db.commit()
+
+
+    async def check_if_account_linked(self, whatsapp_phone_number: str) -> AccountLinking | None:
+        user = await self.user_service.get_user_by_whatsapp_phone_number(whatsapp_phone_number)
+        if not user:
+            logger.warning(f"User not found for WhatsApp number: {whatsapp_phone_number}")
+            return None
+
+        stmt = select(AccountLinking).where(
+            and_(
+                AccountLinking.user_id == user.whatsapp_phone_number,
+                AccountLinking.status == Status.SUCCESS
+            )
+        )
+        account_link = (await self.db.execute(stmt)).scalar_one_or_none()
+        return account_link
+
    
    
     
@@ -253,7 +296,8 @@ class MonoService():
 
         return validated_data #store session id in db so we can use it for verification of otp, format methods and send to whatsapp to form the UI for the methods and hint. send json response back to verify
 
-            
+    
+
 
     async def verify_otp(self, method: str, whatsapp_phone_number: str, phone_number: str = None):
         """

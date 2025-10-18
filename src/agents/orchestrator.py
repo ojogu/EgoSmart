@@ -12,7 +12,5 @@ root_agent = LlmAgent(
     description=setting.PROJECT_DESCRIPTION,
     instruction=SYSTEM_PROMPT,
     tools=[linking_tool],
-    # sub_agents=[delivery_agent],
-    # before_model_callback=callback.on_model_start,
-    # after_model_callback=callback.on_model_end
+
 )

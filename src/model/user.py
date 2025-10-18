@@ -14,6 +14,10 @@ class Status(Enum):
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
     PARTIAL = "partial"
+    
+    NOT_LINKED = "not linked"
+    LINKED_PENDING = "linking pending"
+    LINKED = "Linked"
 
 class User(BaseModel):
 
@@ -86,10 +90,22 @@ class AccountLinking(BaseModel):
     status: Mapped[Status] = mapped_column(
         SqlEnum(Status, name="status_enum"), default=Status.PENDING, nullable=False
     )
+    
+    linking_status: Mapped[Status] = mapped_column(
+        SqlEnum(Status, name="linking_enum"), default=Status.NOT_LINKED, nullable=False
+    ) #for the agent to know if account linking status, pending, failed, success
+    
     data_status: Mapped[Status] = mapped_column(
         SqlEnum(Status, name="data_status_enum"), default=Status.PENDING, nullable=False
-    )
+    ) #from mono to fetch data status of transaction etc
 
+    failed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    
+    failure_reason: Mapped[String] = mapped_column(String())
     # relationship to user
     user_id: Mapped[str] = mapped_column(
         String, ForeignKey("users.whatsapp_phone_number"), nullable=False

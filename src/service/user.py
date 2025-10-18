@@ -94,7 +94,7 @@ class UserService:
         
 
         is_missing = not all([user.first_name, user.last_name, user.email])
-        return {"user_profile_data": is_missing}
+        logger.warning ("user_profile_data is_missing")
 
     async def update_profile_if_missing(
         self,

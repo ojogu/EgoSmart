@@ -40,16 +40,18 @@ class ProcessQueryService:
         """
         Process a user query by managing sessions and delegating to the root agent.
         """
+        logger.info(f"Processing query for phone_number: {phone_number}, query: {query}")
         try:
             session = await self.session_manager.get_or_create_session(
                 phone_number=phone_number,
                 username=username,
                 role=role,
             )
+            logger.info(f"Session created/retrieved for {phone_number} with ID: {session.id}")
             runner = Runner(agent=root_agent, session_service=self.session_manager.session_service, app_name=setting.PROJECT_NAME)
 
             content = types.Content(role='user', parts=[types.Part(text=query)])
-
+            logger.info(f"Running agent for user: {phone_number}, session: {session.id}")
             events = runner.run_async(
                 user_id=phone_number,
                 session_id=session.id,
@@ -58,14 +60,16 @@ class ProcessQueryService:
 
             final_response = None
             async for event in events:
+                logger.info(event)
                 if event.content and event.content.parts:
                     if event.is_final_response():
                         final_response = event.content.parts[0].text
-            logger.info(f"final response is: {final_response}, type is {type(final_response)}")
+            logger.info(f"Agent run completed for {phone_number}. Final response is: {final_response}, type is {type(final_response)}")
             clean_response = clean_json_string(final_response)
             response = json.loads(clean_response)
             # Extracting the user_facing_response
-            user_message = response.get("payload", {}).get("user_facing_response")
+            user_message = response["payload"]["user_facing_response"]
+            logger.info(f"User facing response for {phone_number}: {user_message}")
             return user_message if user_message else "I'm sorry, I couldn't process your request."
 
 
