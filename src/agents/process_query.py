@@ -4,6 +4,7 @@ from src.utils.config import config, setting
 from src.agents.session import  SessionManager
 from src.utils.exception import format_error
 from .orchestrator import root_agent
+from src.agents.subagents.account_linking.agent import linking_agent
 import json
 
 from src.utils.log import setup_logger  # noqa: E402
@@ -76,7 +77,7 @@ class ProcessQueryService:
          
             
         except Exception as e:
-            logger.error(f"Error processing query for {phone_number}: {e}")
+            logger.error(f"Error processing query for {phone_number}: {e}", exc_info=True)
             return format_error(
                 source=__name__,
                 error=f"Error processing query from {phone_number}: {str(e)}",

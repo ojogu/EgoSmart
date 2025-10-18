@@ -187,7 +187,7 @@ IF success:
         transactions or access your money—we're just here to help you 
         manage your finances better.
         
-        [Mono Checkout Link: {mono_url}]
+        [Mono Checkout Link: {mono_url?}]
         
         After you complete the link, let me know and I'll confirm 
         your connection."
