@@ -103,7 +103,7 @@ async def incoming_message(
     }
     user = await user_service.create_user(**user_data)
     agent = await process_query_service.process_query(
-            phone_number = user_wa_id, 
+            whatsapp_phone_number = user_wa_id, 
             query=message_body,
             username=user_name
         )

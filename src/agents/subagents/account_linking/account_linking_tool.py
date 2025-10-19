@@ -16,7 +16,7 @@ async def get_mono_service():
 
 
 
-async def check_link_status(whatsapp_phone_number:str, tool_context:ToolContext):
+async def check_link_status( tool_context:ToolContext):
     """
     Checks the account linking status for a given WhatsApp phone number.
 
@@ -32,6 +32,8 @@ async def check_link_status(whatsapp_phone_number:str, tool_context:ToolContext)
         dict: A dictionary containing the linking status.
               Example: {"status": "linked"} or "user does not exist"
     """
+    state = tool_context.state # Get the state dictionary
+    whatsapp_phone_number = state["whatsapp_phone_number"]
     logger.info(f"Checking link status for WhatsApp number: {whatsapp_phone_number}")
     mono_service = await get_mono_service()
     account = await mono_service.check_if_account_linked(whatsapp_phone_number)
@@ -39,15 +41,14 @@ async def check_link_status(whatsapp_phone_number:str, tool_context:ToolContext)
         logger.info(f"Account not found for WhatsApp number: {whatsapp_phone_number}")
         return "user does not exist"
     status = account.linking_status.value
-    state = tool_context.state # Get the state dictionary
     logger.info(f"Link status for {whatsapp_phone_number}: {status}")
     return {"status":status}
 
 check_link_status_tool = FunctionTool(check_link_status)
 
-async def verify_link_completion(whatsapp_phone_number:str, tool_context:ToolContext):
+async def verify_link_completion( tool_context:ToolContext):
     """
-    Verifies the completion of the account linking process for a given WhatsApp phone number.
+    Verifies the completion of the account linking process for a WhatsApp phone number.
 
     This function checks the linking status of an account with the Mono service.
     It returns the linking status and the timestamp of when the account was linked,
@@ -62,6 +63,8 @@ async def verify_link_completion(whatsapp_phone_number:str, tool_context:ToolCon
               Example: {"status": "linked", "linked at": "2023-10-27T10:00:00Z"}
               or "user does not exist"
     """
+    state = tool_context.state # Get the state dictionary
+    whatsapp_phone_number = state["whatsapp_phone_number"]
     logger.info(f"Verifying link completion for WhatsApp number: {whatsapp_phone_number}")
     mono_service = await get_mono_service()
     account = await mono_service.check_if_account_linked(whatsapp_phone_number)
@@ -76,12 +79,12 @@ async def verify_link_completion(whatsapp_phone_number:str, tool_context:ToolCon
 verify_link_completion_tool = FunctionTool(verify_link_completion)
 
 
-async def initiate_account_link(whatsapp_phone_number:str, email:str, first_name:str, last_name:str, tool_context:ToolContext):
+async def initiate_account_link(email:str, first_name:str, last_name:str, tool_context:ToolContext):
+    
     """
     Initiates the account linking process for a user.
 
-    This function updates the user's profile with the provided WhatsApp number,
-    email, first name, and last name. It then initiates the account linking
+    This function updates the user's profile with the provided email, first name, and last name. It then initiates the account linking
     process with the Mono service and returns the URL for the linking.
 
     Args:
@@ -95,19 +98,21 @@ async def initiate_account_link(whatsapp_phone_number:str, email:str, first_name
         dict: A dictionary containing the Mono account linking URL.
               Example: {"mono_url": "https://mono.co/link/..."}
     """
+    state = tool_context.state # Get the state dictionary
+    state["user:first_name"] = first_name
+    state["user:last_name"] = last_name
+    state["user:email"] = email
+    whatsapp_phone_number = state["whatsapp_phone_number"]
     logger.info(f"Initiating account link for WhatsApp number: {whatsapp_phone_number}, email: {email}")
     user_service = await get_user_service()
     mono_service = await get_mono_service()
-    user = user_service.update_profile_if_missing(
+    user = await user_service.update_profile_if_missing(
         whatsapp_phone_number=whatsapp_phone_number,
         first_name=first_name,
         last_name=last_name,
         email=email
     )
-    state = tool_context.state # Get the state dictionary
-    state["user:first_name"] = first_name
-    state["user:last_name"] = last_name
-    state["user:email"] = email
+
     user_data = {
         "first_name":user.first_name,
         "last_name":user.last_name,
@@ -115,7 +120,6 @@ async def initiate_account_link(whatsapp_phone_number:str, email:str, first_name
     }
     logger.info(f"User profile updated: {user_data}")
     mono_url = await mono_service.linking_account_initation(whatsapp_phone_number,**user_data)
-    state["user:mono_url"] = mono_url
     logger.info(f"Mono account linking initiated, URL: {mono_url}")
     return {"mono_url": mono_url}
 

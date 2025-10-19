@@ -17,4 +17,4 @@ linking_agent = LlmAgent(
 
 #convert this agent to a tool for the root agent
 
-linking_tool = AgentTool(linking_agent)
+linking_agent_tool = AgentTool(linking_agent)

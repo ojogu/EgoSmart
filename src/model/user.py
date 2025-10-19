@@ -101,11 +101,11 @@ class AccountLinking(BaseModel):
 
     failed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        nullable=False,
+        # default=lambda: datetime.now(timezone.utc),
+        nullable=True
     )
     
-    failure_reason: Mapped[String] = mapped_column(String())
+    failure_reason: Mapped[String] = mapped_column(String(), nullable=True)
     # relationship to user
     user_id: Mapped[str] = mapped_column(
         String, ForeignKey("users.whatsapp_phone_number"), nullable=False

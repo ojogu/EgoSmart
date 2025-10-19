@@ -226,19 +226,32 @@ class MonoService():
 
 
     async def check_if_account_linked(self, whatsapp_phone_number: str) -> AccountLinking | None:
-        user = await self.user_service.get_user_by_whatsapp_phone_number(whatsapp_phone_number)
-        if not user:
-            logger.warning(f"User not found for WhatsApp number: {whatsapp_phone_number}")
-            return None
+        logger.info(f"Checking if account is linked for WhatsApp number: {whatsapp_phone_number}")
+        try:
+            user = await self.user_service.get_user_by_whatsapp_phone_number(whatsapp_phone_number)
+            if not user:
+                logger.warning(f"User not found for WhatsApp number: {whatsapp_phone_number}")
+                return None
 
-        stmt = select(AccountLinking).where(
-            and_(
-                AccountLinking.user_id == user.whatsapp_phone_number,
-                AccountLinking.status == Status.SUCCESS
+            stmt = select(AccountLinking).where(
+                and_(
+                    AccountLinking.user_id == user.whatsapp_phone_number,
+                    AccountLinking.status == Status.SUCCESS
+                )
             )
-        )
-        account_link = (await self.db.execute(stmt)).scalar_one_or_none()
-        return account_link
+            logger.debug(f"Executing query to find successful AccountLinking for user_id={user.whatsapp_phone_number}")
+            result = await self.db.execute(stmt)
+            account_link = result.scalar_one_or_none()
+
+            if account_link:
+                logger.info(f"Found linked account for user {user.whatsapp_phone_number} with reference: {getattr(account_link, 'reference', None)}")
+            else:
+                logger.info(f"No linked account found for user {user.whatsapp_phone_number}")
+
+            return account_link
+        except Exception as e:
+            logger.error(f"Error checking account linking for {whatsapp_phone_number}: {e}", exc_info=True)
+            return None
 
    
    
