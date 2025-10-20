@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, List, Optional
 from google.adk.sessions import DatabaseSessionService, Session
 from src.utils.log import setup_logger
 from src.utils.config import config, setting
@@ -9,7 +9,20 @@ LAST_UPDATED_EXPIRATION_DAYS = 2
 SESSION_AGE_EXPIRATION_DAYS = 2
 APP_NAME = setting.PROJECT_NAME
 
-
+    # --- Persistent State Keys to Clear ---
+    # IMPORTANT: You MUST update this list with the exact 'user:' keys your application uses.
+    # The 'user:' prefix is essential for persistent state.
+USER_STATE_KEYS_TO_CLEAR = [
+        "user:role",
+        "user:mono_url",
+        "user:email",
+        "user:username",
+        "user:first_name",
+        "user:last_name",
+        "user:whatsapp_phone_number",
+        "user:phone_number",
+        # Add all other 'user:' keys you wish to permanently delete
+    ]
 
 
 class SessionManager:
@@ -103,60 +116,127 @@ class SessionManager:
             
     
     
+    async def clear_user_persistent_state(
+        self,
+        user_id: str,
+        keys_to_clear: List[str]
+    ) -> bool:
+        """
+        Explicitly clears persistent User-Scoped state keys by setting their value to None.
+        
+        Args:
+            user_id: The ID of the user whose state should be cleared.
+            keys_to_clear: A list of the full 'user:' prefixed keys to remove.
+            
+        Returns:
+            True if the update was attempted successfully, False otherwise.
+        """
+        if not user_id or not keys_to_clear:
+            return True # Nothing to do
+        
+        updates: Dict[str, Optional[Any]] = {key: None for key in keys_to_clear}
+        
+        logger.info(f"Attempting to clear keys: {list(updates.keys())} for user: {user_id}")
+
+        try:
+            # We use update_user_state (or a similar direct update method) 
+            # if the service supports it. This is the most direct way to 
+            # update persistent state outside of a Runner execution.
+            # If your SessionService does not expose this, you may need to 
+            # create a temporary session, update state, and append an event.
+            if hasattr(self.session_service, 'update_user_state'):
+                await self.session_service.update_user_state(
+                    app_name=self.app_name,
+                    user_id=user_id,
+                    updates=updates
+                )
+                logger.info(f"Successfully cleared persistent user state for {user_id}.")
+                return True
+            else:
+                logger.warning(
+                    "SessionService is missing 'update_user_state'. Persistent state (user:) "
+                    "may still exist. You may need to implement a dedicated method in your service."
+                )
+                return False
+                
+        except Exception as e:
+            logger.error(f"Failed to clear persistent user state for {user_id}. Error: {e}")
+            return False
+            
+            
     async def delete_all_sessions(
         self,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        clear_persistent_state: bool = True, # NEW argument
     ) -> int:
         """
         Fetches all sessions for the configured app_name (and optional user_id) 
-        and deletes them sequentially, logging progress.
+        and deletes them sequentially, logging progress. 
+        Can optionally clear persistent user-scoped state.
         
         Args:
-            user_id: The ID of the user whose sessions should be deleted. 
-                     If None, attempts to fetch and delete all sessions for self.app_name.
+            user_id: The ID of the user whose sessions (and optional state) should be deleted.
+            clear_persistent_state: If True and user_id is provided, attempts to clear 
+                                     known 'user:' prefixed state keys for that user.
             
         Returns:
             The count of sessions successfully deleted.
         """
         
-        target = f"user: {user_id}" if user_id else f"app: {self.app_name}"
+        target = f"user: {user_id}" if user_id else f"app: {self.app_name} (Global)"
         logger.info(f"Attempting to fetch and delete all sessions for {target}...")
         
         try:
-            # 1. Fetch all matching sessions (service returns a response with .sessions)
+            # 1. Fetch all matching sessions
             response = await self.session_service.list_sessions(
                 app_name=self.app_name,
                 user_id=user_id
             )
-            sessions_to_delete: list[Session] = response.sessions if response and response.sessions else []
+            # Assuming list_sessions returns a response object with a sessions attribute
+            sessions_to_delete: List[Session] = response.sessions if response and hasattr(response, 'sessions') and response.sessions else []
         except Exception as e:
             logger.error(f"Failed to list sessions for deletion: {e}")
             return 0
         
         if not sessions_to_delete:
             logger.info("No sessions found to delete.")
-            return 0
-
+        
         count = 0
         total_found = len(sessions_to_delete)
-        logger.info(f"Found {total_found} sessions. Starting sequential deletion.")
+        if total_found > 0:
+            logger.info(f"Found {total_found} sessions. Starting sequential deletion.")
         
-        # 2. Iterate and delete each one
-        for session in sessions_to_delete:
-            try:
-                # Use the service's delete_session method directly
-                await self.session_service.delete_session(
-                    app_name=session.app_name,
-                    user_id=session.user_id,
-                    session_id=session.id
-                )
-                count += 1
-                logger.debug(f"Successfully deleted session: {session.id}")
-            except Exception as e:
-                # Log a warning, but continue with the rest of the sessions
-                logger.warning(f"Failed to delete session {session.id}. Error: {e}")
-                
-        logger.info(f"Deletion complete for {target}. Total deleted: {count} out of {total_found} found.")
+            # 2. Iterate and delete each session (clears SESSION-SCOPED state)
+            for session in sessions_to_delete:
+                try:
+                    await self.session_service.delete_session(
+                        app_name=session.app_name,
+                        user_id=session.user_id,
+                        session_id=session.id
+                    )
+                    count += 1
+                    logger.debug(f"Successfully deleted session: {session.id}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete session {session.id}. Error: {e}")
+                    
+            logger.info(f"Session deletion complete. Total deleted: {count} out of {total_found} found.")
+
+        
+        # 3. DELETE PERSISTENT STATE (NEW LOGIC)
+        if clear_persistent_state and user_id:
+            # This handles User-Scoped state (user:), which lives outside the session.
+            await self.clear_user_persistent_state(user_id, USER_STATE_KEYS_TO_CLEAR)
+        
+        elif clear_persistent_state and not user_id:
+            # Warn user if they try to clear persistent state without a user_id
+            # (clearing app: state should be a dedicated admin action).
+            logger.warning(
+                "Cannot clear persistent state without a specific user_id. "
+                "Application-Scoped ('app:') state remains untouched."
+            )
+            
+        logger.info(f"Cleanup complete for {target}.")
         return count
+
 
 

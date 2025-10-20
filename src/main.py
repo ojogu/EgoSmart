@@ -90,7 +90,7 @@ def index():
     return {
         "message": "egosmart API"
     }
-    
+
 @app.post("/dev/reset-db", include_in_schema=False)
 async def reset_database():
     await drop_db()

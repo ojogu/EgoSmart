@@ -33,7 +33,7 @@ async def check_link_status( tool_context:ToolContext):
               Example: {"status": "linked"} or "user does not exist"
     """
     state = tool_context.state # Get the state dictionary
-    whatsapp_phone_number = state["whatsapp_phone_number"]
+    whatsapp_phone_number = state["user:whatsapp_phone_number"]
     logger.info(f"Checking link status for WhatsApp number: {whatsapp_phone_number}")
     mono_service = await get_mono_service()
     account = await mono_service.check_if_account_linked(whatsapp_phone_number)
@@ -48,23 +48,21 @@ check_link_status_tool = FunctionTool(check_link_status)
 
 async def verify_link_completion( tool_context:ToolContext):
     """
-    Verifies the completion of the account linking process for a WhatsApp phone number.
+    Verifies the completion of the account linking process for a WhatsApp phone number, fetches the number from the state
 
     This function checks the linking status of an account with the Mono service.
-    It returns the linking status and the timestamp of when the account was linked,
+    It returns the linking status and the timestamp of when the account was linked, the account_number and account name
     or indicates if the user does not exist.
 
-    Args:
-        whatsapp_phone_number (str): The WhatsApp phone number of the user.
 
 
     Returns:
-        dict: A dictionary containing the linking status and linked timestamp.
-              Example: {"status": "linked", "linked at": "2023-10-27T10:00:00Z"}
+        dict: A dictionary containing the linking status, linked timestamp, account number, account name, bank
+              Example: {"status": "linked", "linked at": "2023-10-27T10:00:00Z", "account number": 12345678911, "account name": "John Doe", "bank": opay}
               or "user does not exist"
     """
     state = tool_context.state # Get the state dictionary
-    whatsapp_phone_number = state["whatsapp_phone_number"]
+    whatsapp_phone_number = state["user:whatsapp_phone_number"]
     logger.info(f"Verifying link completion for WhatsApp number: {whatsapp_phone_number}")
     mono_service = await get_mono_service()
     account = await mono_service.check_if_account_linked(whatsapp_phone_number)
@@ -74,7 +72,19 @@ async def verify_link_completion( tool_context:ToolContext):
     status = account.linking_status.value
     state = tool_context.state # Get the state dictionary
     logger.info(f"Link completion status for {whatsapp_phone_number}: {status}, linked at: {account.created_at}")
-    return {"status":status, "linked at": account.created_at}
+    
+    state["linked at"] = str(account.created_at),
+    state["account name"] = account.account_name,
+    state["account number"] = account.account_number,
+    state["bank"] = account.bank_name
+    
+    return {
+        "status":status, 
+        "linked at": str(account.created_at),
+        "account name": account.account_name,
+        "account number": account.account_number,
+        "bank": account.bank_name
+        }
     
 verify_link_completion_tool = FunctionTool(verify_link_completion)
 
@@ -102,7 +112,8 @@ async def initiate_account_link(email:str, first_name:str, last_name:str, tool_c
     state["user:first_name"] = first_name
     state["user:last_name"] = last_name
     state["user:email"] = email
-    whatsapp_phone_number = state["whatsapp_phone_number"]
+    state["user:mono_url"] = ""
+    whatsapp_phone_number = state["user:whatsapp_phone_number"]
     logger.info(f"Initiating account link for WhatsApp number: {whatsapp_phone_number}, email: {email}")
     user_service = await get_user_service()
     mono_service = await get_mono_service()
