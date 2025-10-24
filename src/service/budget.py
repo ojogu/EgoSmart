@@ -1,8 +1,9 @@
+from src.model import FinancialProfile
 class Budgeting():
     def __init__(self):
         pass
     
-    async def write_user_profile(self, user_id, profile_data):
+    async def write_user_profile(self, user_id, profile_data:dict):
         pass 
     
     async def read_user_profile(self, user_id):

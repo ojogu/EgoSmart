@@ -25,12 +25,78 @@ class IncomeDateRange(Enum):
     ELEVENTH_TO_TWENTIETH = "11th-20th"
     TWENTY_FIRST_TO_THIRTY_FIRST = "21st-31st"
     IRREGULAR = "irregular"
-    
-    
+ 
+ 
+class Budget(BaseModel):
+    """
+    Represents a user's high-level budget plan (monthly, weekly, or custom period).
+    Each budget is linked to a financial profile and contains multiple categories.
+    """
+    __tablename__ = "budgets"
 
-class Budgeting(BaseModel):
-    """store budgeting details"""
-    pass 
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.whatsapp_phone_number"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String, default="Monthly Budget", nullable=False)
+    period: Mapped[str] = mapped_column(String, default="monthly")  # monthly, weekly, custom
+    start_date: Mapped[datetime.date] = mapped_column(nullable=True)
+    end_date: Mapped[datetime.date] = mapped_column(nullable=True)
+
+    total_income: Mapped[int] = mapped_column(Float, nullable=True)
+    total_allocated: Mapped[int] = mapped_column(Float, nullable=True)
+    total_spent: Mapped[int] = mapped_column(Float, default=0)
+    remaining_balance: Mapped[int] = mapped_column(Float, default=0)
+
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+    # Relationships
+    categories: Mapped[List["BudgetCategory"]] = relationship(
+        "BudgetCategory", back_populates="budget", cascade="all, delete-orphan"
+    )
+    user: Mapped["User"] = relationship("User", backref="budgets")
+   
+class BudgetCategory(BaseModel):
+    """
+    Represents a category allocation within a user's budget plan.
+    Example: Food - ₦30,000, Rent - ₦50,000, Transportation - ₦15,000
+    """
+    __tablename__ = "budget_categories"
+
+    budget_id: Mapped[int] = mapped_column(ForeignKey("budgets.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    allocated_amount: Mapped[int] = mapped_column(Float, nullable=False)
+    spent_amount: Mapped[int] = mapped_column(Float, default=0)
+    remaining_amount: Mapped[int] = mapped_column(Float, default=0)
+    priority: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # e.g. 1-5 importance ranking
+
+
+    # Relationship
+    budget: Mapped["Budget"] = relationship("Budget", back_populates="categories")
+    transactions: Mapped[List["BudgetTransaction"]] = relationship(
+        "BudgetTransaction", back_populates="category", cascade="all, delete-orphan"
+    )
+  
+class BudgetTransaction(BaseModel):
+    """
+    Tracks actual spending or income related to a specific budget category.
+    This helps compare planned vs actual performance.
+    """
+    __tablename__ = "budget_transactions"
+
+
+    category_id: Mapped[int] = mapped_column(ForeignKey("budget_categories.id"), nullable=False)
+    amount: Mapped[int] = mapped_column(Float, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    transaction_type: Mapped[str] = mapped_column(String, default="expense")  # expense | income
+    transaction_date: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.utcnow)
+
+    # Relationships
+    category: Mapped["BudgetCategory"] = relationship("BudgetCategory", back_populates="transactions")
+
+
 
 class FinancialProfile(BaseModel):
     """
@@ -80,7 +146,7 @@ class FinancialProfile(BaseModel):
     user_saves: Mapped[bool] = mapped_column(Boolean, default=False)
     savings_amount: Mapped[float] = mapped_column(Float, nullable=True) #Understand saving habits and recommend appropriate strategies.
     
-    mode_of_payment: Mapped[str] = mapped_column(String, nullable=False) #Determines tracking method (manual entry vs. linked account or image receipt).
+    # mode_of_payment: Mapped[str] = mapped_column(String, nullable=False) #Determines tracking method (manual entry vs. linked account or image receipt).
     
     # Future-Proofing for Budgeting
     total_estimated_monthly_income: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
