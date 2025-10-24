@@ -17,3 +17,9 @@ root_agent = LlmAgent(
     tools=[linking_agent_tool],
 
 )
+
+
+# Model Name,Purpose,API Model ID
+# Gemini 2.5 Pro,Most advanced reasoning and coding.,gemini-2.5-pro
+# Gemini 2.5 Flash,Best balance of speed and performance.,gemini-2.5-flash
+# Gemini 2.5 Flash-Lite,Fastest and most cost-efficient.,gemini-2.5-flash-lite

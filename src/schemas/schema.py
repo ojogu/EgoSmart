@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 class CreateUser(BaseModel):
     whatsapp_phone_number: str
     whatsapp_profile_name: Optional[str] = None
+    country_name: Optional[str] = None
+    
     # country_name: Optional[str] = None
     # country_code : Optional[str] = None
     # country_dial_code: Optional[str] = None

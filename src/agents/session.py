@@ -35,7 +35,7 @@ class SessionManager:
     # "sqlite:///./test.db"
 
     
-    async def get_or_create_session(self, whatsapp_phone_number: str, username: str | None = None, role: str | None = None) -> Session:
+    async def get_or_create_session(self, whatsapp_phone_number: str, username: str | None = None, role: str | None = None, country: str | None = None) -> Session:
         """
         Retrieve an active session or create a new one.
         """
@@ -52,6 +52,7 @@ class SessionManager:
             "user:whatsapp_phone_number":whatsapp_phone_number,
             "user:role": role if role else "unknown",
             "user:username": username if username else "",
+            "user:country": country if country else "",
         }
         
         if all_sessions_list:
@@ -184,6 +185,7 @@ class SessionManager:
         """
         
         target = f"user: {user_id}" if user_id else f"app: {self.app_name} (Global)"
+        target = target.replace(" ", "")
         logger.info(f"Attempting to fetch and delete all sessions for {target}...")
         
         try:

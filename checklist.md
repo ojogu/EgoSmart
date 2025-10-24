@@ -1,3 +1,93 @@
+# Agent Descriptions
+
+## 1. Data Ingestion Agent
+```python
+description=(
+    "Handles all transaction data collection and normalization: "
+    "fetching transactions from Open Banking APIs, processing manual "
+    "transaction entries, handling receipt uploads with OCR extraction, "
+    "validating data integrity, and storing standardized transaction records."
+)
+```
+
+## 2. Transaction Categorization Agent
+```python
+description=(
+    "Manages transaction classification and learning: "
+    "automatically categorizing transactions using rule-based and ML models, "
+    "processing user category corrections, learning from feedback patterns, "
+    "and re-categorizing transactions when rules are updated."
+)
+```
+
+## 3. Budget Tracking Agent
+```python
+description=(
+    "Monitors budget compliance and spending limits: "
+    "setting and updating budget limits per category, tracking real-time "
+    "spending against budgets, detecting when thresholds are approached or "
+    "exceeded, and sending timely alerts and notifications to users."
+)
+```
+
+## 4. Financial Summary Agent
+```python
+description=(
+    "Generates comprehensive financial overviews and insights: "
+    "calculating spending by category and time period, showing budget "
+    "remaining balances, comparing income versus expenses, and creating "
+    "clear visualizations of financial status and trends."
+)
+```
+
+---
+
+## Post-MVP Agents (For Reference)
+
+### 5. Recommendations Agent
+```python
+description=(
+    "Provides personalized financial guidance and optimization: "
+    "analyzing spending patterns to identify savings opportunities, "
+    "suggesting budget adjustments based on behavior, recommending "
+    "actionable steps to improve financial health, and adapting advice "
+    "to user goals and preferences."
+)
+```
+
+### 6. Financial Analysis Agent
+```python
+description=(
+    "Performs advanced analytical operations on financial data: "
+    "identifying spending trends and patterns, detecting anomalies and "
+    "unusual transactions, comparing period-over-period changes, forecasting "
+    "future expenses, and calculating savings potential across categories."
+)
+```
+
+### 7. Reporting Agent
+```python
+description=(
+    "Creates formatted financial reports and exports: "
+    "generating monthly/quarterly/annual summaries, producing visualizations "
+    "and charts, exporting data in multiple formats (PDF, CSV, Excel), and "
+    "scheduling automated report delivery."
+)
+```
+
+### 8. Savings Goals Agent
+```python
+description=(
+    "Manages financial goals and progress tracking: "
+    "creating and updating savings goals, tracking progress toward targets, "
+    "calculating required monthly savings rates, suggesting budget adjustments "
+    "to meet goals, and celebrating milestones with users."
+)
+```
+
+
+
+
 # Roadmap & Sprint Plan
 
 ## 1. Prioritize and Freeze MVP Scope

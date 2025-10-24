@@ -4,7 +4,6 @@ from src.utils.config import config, setting
 from src.agents.session import  SessionManager
 from src.utils.exception import format_error
 from .orchestrator import root_agent
-from src.agents.subagents.account_linking.agent import linking_agent
 import json
 
 from src.utils.log import setup_logger  # noqa: E402
@@ -52,7 +51,7 @@ class ProcessQueryService:
         self.session_manager = session_manager
 
 
-    async def process_query(self, whatsapp_phone_number: str, query: str, username: str | None = None, role: str | None = None):
+    async def process_query(self, whatsapp_phone_number: str, query: str, username: str | None = None, role: str | None = None, country: str | None = None):
         """
         Process a user query by managing sessions and delegating to the root agent.
         """
@@ -62,6 +61,7 @@ class ProcessQueryService:
                 whatsapp_phone_number=whatsapp_phone_number,
                 username=username,
                 role=role,
+                country=country,
             )
             logger.info(f"Session created/retrieved for {whatsapp_phone_number} with ID: {session.id}")
             runner = Runner(agent=root_agent, session_service=self.session_manager.session_service, app_name=setting.PROJECT_NAME)

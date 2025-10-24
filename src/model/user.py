@@ -6,6 +6,25 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, backref
 from enum import Enum
 from src.base.model import BaseModel
 
+class PrimaryIncomeSource(Enum):
+    FULL_TIME = "Full-time (9-5 job)"
+    FREELANCING = "Freelancing/Gig work"
+    BUSINESS = "Business/Self-employed"
+    STUDENT_ALLOWANCE = "Student Allowance"
+    OTHER = "Other"
+
+class IncomeFrequency(Enum):
+    MONTHLY = "Monthly"
+    BI_WEEKLY = "Bi-weekly"
+    WEEKLY = "Weekly"
+    IRREGULAR = "Irregular/Varies"
+
+class IncomeDateRange(Enum):
+    FIRST_TO_TENTH = "1st-10th"
+    ELEVENTH_TO_TWENTIETH = "11th-20th"
+    TWENTY_FIRST_TO_THIRTY_FIRST = "21st-31st"
+    IRREGULAR = "irregular"
+
 class Status(Enum):
     PENDING = "pending"
     VERIFIED = "verified"
@@ -28,6 +47,7 @@ class User(BaseModel):
     whatsapp_profile_name: Mapped[str] = mapped_column(String, nullable=True)
 
     email: Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True)
+    country_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     first_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     last_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
@@ -114,8 +134,49 @@ class AccountLinking(BaseModel):
 
 
 
+class Budgeting(BaseModel):
+    """store budgeting details"""
+    pass 
 
+class FinancialProfile(BaseModel):
+    """
+    Stores the user's financial baseline used for budgeting and income analysis.
+    This model helps the budgeting sub-agent understand earning patterns,
+    timing, and variability to craft realistic budget recommendations.
+    """
+    __tablename__ = "financial_profiles"
 
+    # Core User Link
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.whatsapp_phone_number"), nullable=False
+    )
+
+    # Income Information
+    primary_income_source: Mapped[Optional[PrimaryIncomeSource]] = mapped_column(
+        SqlEnum(PrimaryIncomeSource, name="primary_income_source_enum"), nullable=True
+    )
+    income_frequency: Mapped[Optional[IncomeFrequency]] = mapped_column(
+        SqlEnum(IncomeFrequency, name="income_frequency_enum"), nullable=True
+    )
+    monthly_income: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    income_date_range: Mapped[Optional[IncomeDateRange]] = mapped_column(
+        SqlEnum(IncomeDateRange, name="income_date_range_enum"), nullable=True
+    )
+
+    # Secondary Income (optional)
+    has_other_income: Mapped[bool] = mapped_column(Boolean, default=False)
+    other_income_monthly_amount: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    other_income_frequency: Mapped[Optional[IncomeFrequency]] = mapped_column(
+        SqlEnum(IncomeFrequency, name="other_income_frequency_enum"), nullable=True
+    )
+
+    # Future-Proofing for Budgeting
+    total_estimated_monthly_income: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    currency: Mapped[str] = mapped_column(String, default="NGN", nullable=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)  # e.g. if confirmed via transactions
+
+    # Relationship
+    user: Mapped["User"] = relationship("User", backref="financial_profile")
 
 
 class BanKDetails(BaseModel):
@@ -179,30 +240,6 @@ class Transaction(BaseModel):
 
 
 
-
-class IntentsLog(BaseModel):
-    __tablename__ = "intents_log"
-
-    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
-    user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.whatsapp_phone_number"), nullable=False
-    )
-    raw_message: Mapped[str] = mapped_column(String, nullable=False)
-    detected_intent: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    entities: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
-    timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
-
-    user: Mapped["User"] = relationship("User", backref="intents_logs")
-
-    def __repr__(self) -> str:
-        return (
-            f"<IntentsLog(id={self.id!r}, user_id={self.user_id!r}, raw_message={self.raw_message!r}, "
-            f"detected_intent={self.detected_intent!r}, timestamp={self.timestamp!r})>"
-        )
 
 
 class Upload(BaseModel):

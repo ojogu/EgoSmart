@@ -59,8 +59,10 @@ async def drop_db():
     Caution: This operation will delete all data in the tables. Use with care.
     """
     async with engine.begin() as conn:
-        # Use run_sync to call the synchronous drop_all method in an async context
-        await conn.run_sync(Base.metadata.drop_all)
+        # Drop tables in reverse order to handle dependencies, using CASCADE
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(text(f"DROP TABLE IF EXISTS {table.name} CASCADE;"))
+        print("All tables dropped with CASCADE.")
 
 
 

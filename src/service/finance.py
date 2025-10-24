@@ -255,6 +255,30 @@ class MonoService():
 
    
    
+    async def fetch_balance(self):
+       pass 
+   
+    async def fetch_income(self):
+       pass 
+   
+    async def fetch_account_detail(self):
+       pass 
+   
+    async def reauth(self):
+       pass 
+   
+    async def fetch_income_record(self):
+       pass 
+   
+    async def unlink_account(self):
+       pass 
+   
+    async def fetch_statement(self):
+       pass 
+   
+    async def fetch_transaction(self):
+       pass 
+   
     
     async def verify_bvn(self, bvn:str, whatsapp_phone_number:str):
         logger.info(f"Attempting to verify BVN for user with WhatsApp number: {whatsapp_phone_number}")

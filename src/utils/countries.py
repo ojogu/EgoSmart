@@ -60,20 +60,20 @@ def parse_number(phone: str, default_region: Optional[str] = None) -> Dict[str, 
 
 
 # Example usage with error handling
-if __name__ == "__main__":
-    test_numbers = [
-        "2349065011334",
-        "+2348123456789",
-        "+14155552671",
-        "invalid_number"
-    ]
+# if __name__ == "__main__":
+#     test_numbers = [
+#         "2349065011334",
+#         "+2348123456789",
+#         "+14155552671",
+#         "invalid_number"
+#     ]
     
-    for num in test_numbers:
-        try:
-            result = parse_number(num)
-            print(f"\n✓ Success for {num}:")
-            print(f"  Country: {result['country_name']}")
-            print(f"  Carrier: {result['carrier']}")
-            print(f"  International: {result['formatted_international']}")
-        except ValueError as e:
-            print(f"\n✗ Error for {num}: {e}")
+#     for num in test_numbers:
+#         try:
+#             result = parse_number(num)
+#             print(f"\n✓ Success for {num}:")
+#             print(f"  Country: {result['country_name']}")
+#             print(f"  Carrier: {result['carrier']}")
+#             print(f"  International: {result['formatted_international']}")
+#         except ValueError as e:
+#             print(f"\n✗ Error for {num}: {e}")

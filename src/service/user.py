@@ -40,12 +40,14 @@ class UserService:
         result = await self.db.execute(
             select(User).where(User.whatsapp_phone_number == whatsapp_phone_number)
         )
+        logger.info(f"user_found:")
         return result.scalar_one_or_none()
 
     async def create_user(self, **user_data: CreateUser) -> User:
         """Create a new user."""
         # Check if phone_number already exists
         validated_data = CreateUser(**user_data)
+        logger.info(f"validated data:{validated_data.whatsapp_phone_number}")
         existing_user = await self.get_user_by_whatsapp_phone_number(validated_data.whatsapp_phone_number)
         if existing_user:
             logger.warning(F"user already exists: {existing_user}")
@@ -71,6 +73,7 @@ class UserService:
             await self.db.rollback()
             # Check if it's a unique constraint violation (though checked above, good practice)
             if "unique constraint" in str(e).lower():
+                logger.error(f"an error exist: {e}")
                 raise AlreadyExistsError(
                     f"Email '{user_data.whatsapp_phone_number}' is already registered (concurrent request?)."
                 )

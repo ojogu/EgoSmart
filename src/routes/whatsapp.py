@@ -8,7 +8,7 @@ from src.service.user import UserService
 from src.utils.db import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.utils.redis import get_redis
-
+from src.utils.countries import parse_number
 from src.utils.log import setup_logger  # noqa: E402
 logger = setup_logger(__name__, file_path="whatsapp.log")
 
@@ -88,7 +88,6 @@ async def incoming_message(
         return JSONResponse(status_code=400, content={"error": "Malformed webhook payload"})
     
     # Deduplication: check if message_id was already processed
-    
     if await client.get(message_id):
         logger.warning(f"{message_id} duplicate - already processed")
         return JSONResponse(content={"status": "duplicate - already processed"}, status_code=200)
@@ -96,16 +95,21 @@ async def incoming_message(
     # Mark message as processed (expires after 1 hour)
     await client.setex(message_id, 3600, "seen")
     
+    country = parse_number(phone=user_wa_id)
+    country_name=country['country_name']
     #store users in the db
     user_data = {
         "whatsapp_phone_number": user_wa_id,
-        "whatsapp_profile_name": user_name
+        "whatsapp_profile_name": user_name,
+        "country_name": country_name
     }
+    logger.info(f"user data: {user_data}")
     user = await user_service.create_user(**user_data)
     agent = await process_query_service.process_query(
             whatsapp_phone_number = user_wa_id, 
             query=message_body,
-            username=user_name
+            username=user_name,
+            country=country_name
         )
         
 

@@ -19,7 +19,8 @@ logger = setup_logger(__name__, file_path="main.log")
 
 async def drop_all_session():
     session_manager = SessionManager()
-    await session_manager.delete_all_sessions("2349065011334")
+    await session_manager.delete_all_sessions("234 813 087 0632")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
