@@ -4,8 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from .config import config
 from src.base.model import Base
-from .config import config
-from src.model.user import User
+from src.model import *
 
 engine = create_async_engine(url= config.DATABASE_URL)
 
