@@ -18,14 +18,7 @@ class Budgeting():
         self.user_service = UserService(db=db)
     
 
-    async def update_financial_profile_if_missing(
-        self,
-        whatsapp_phone_number,
-        **data:FinancialProfileSchema 
-    ) -> str:
-        """Update profile if fields are missing and return the user."""
-        validated_data = FinancialProfileSchema(**data)
-        try:
+    async def check_if_user_has_financial_profile(self, whatsapp_phone_number:str):
             user = await self.user_service.get_user_by_whatsapp_phone_number(whatsapp_phone_number)
             if not user:
                 logger.warning(f"user: {whatsapp_phone_number} does not exist, create user")
@@ -36,6 +29,19 @@ class Budgeting():
             stmt = select(FinancialProfile).where(user.whatsapp_phone_number == FinancialProfile.user_id)
             result = await self.db.execute(stmt)
             financial_profile = result.scalars().first()
+            return financial_profile
+        
+        
+    async def update_financial_profile_if_missing(
+        self,
+        whatsapp_phone_number,
+        **data:FinancialProfileSchema 
+    ):
+        
+        """Update profile if fields are missing and return the user."""
+        validated_data = FinancialProfileSchema(**data)
+        try:
+            financial_profile = await self.check_if_user_has_financial_profile(whatsapp_phone_number)
             
             if not financial_profile:
                 logger.warning(f"Financial profile for user: {whatsapp_phone_number} does not exist, creating one.")
@@ -55,7 +61,7 @@ class Budgeting():
             
             if not fields_to_update:
                 logger.info(f"Financial profile for {whatsapp_phone_number} is already complete or no new data provided. No update needed.")
-                return user # Still returning user as per original function signature
+                return financial_profile 
 
             # Perform the update
             logger.info(f"Updating financial profile for user {whatsapp_phone_number}")
@@ -66,7 +72,7 @@ class Budgeting():
             await self.db.refresh(financial_profile)
             
             logger.info(f"Successfully updated financial profile for user {whatsapp_phone_number}")
-            return user # Still returning user as per original function signature
+            return financial_profile 
         
         except SQLAlchemyError as e:
             await self.db.rollback()
@@ -74,8 +80,11 @@ class Budgeting():
             raise DatabaseError(f"Could not update profile: {e}") from e
 
     
-    async def read_user_profile(self, user_id):
-        pass 
+    async def read_user_financial_profile(self, whatsapp_phone_number):
+        stmt = select(FinancialProfile).where(whatsapp_phone_number==FinancialProfile.user_id)
+        result = await self.db.execute(stmt)
+        financial_profile = result.scalars().first()
+        return financial_profile
     
     async def create_budget(self, user_id, budget_data):
         pass 
