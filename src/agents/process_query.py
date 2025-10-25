@@ -4,47 +4,13 @@ from src.utils.config import config, setting
 from src.agents.session import  SessionManager
 from src.utils.exception import format_error
 from .orchestrator import root_agent
-import json
-
+from .util import safe_json_loads
 from src.utils.log import setup_logger  # noqa: E402
+
 logger = setup_logger(__name__, file_path="agent.log")
 
 
-def clean_json_string(raw: str) -> str:
-    """
-    Cleans a raw string by robustly isolating the main JSON object content,
-    stripping surrounding text, Markdown fences (```json), and whitespace.
-    
-    This method works even if descriptive text surrounds the JSON block.
-    
-    Args:
-        raw: The raw text output potentially containing JSON.
-        
-    Returns:
-        A cleaned string containing only the valid JSON content, or an empty string.
-    """
-    if not raw:
-        return ""
-        
-    # Step 1: Strip common artifacts regardless of their position (e.g., ```json, ```)
-    # This turns '```json\n{\n...\n}\n```' into '{\n...\n}'
-    cleaned = raw.replace('```json', '').replace('```', '')
-    
-    # Step 2: Locate the boundaries of the JSON object ({...})
-    # This is the most critical step to isolate the actual data.
-    start_index = cleaned.find('{')
-    end_index = cleaned.rfind('}')
-    
-    # Check for validity of indices
-    if start_index == -1 or end_index == -1 or start_index >= end_index:
-        logger.warning("Could not find valid '{...}' delimiters in the cleaned string.")
-        return ""
-    
-    # Step 3: Extract the content between the first '{' and the last '}' (inclusive)
-    json_content = cleaned[start_index : end_index + 1]
-    
-    # Step 4: Return the final string, stripped of remaining surrounding whitespace
-    return json_content.strip()
+
 
 class ProcessQueryService:
     def __init__(self, session_manager: SessionManager):
@@ -81,10 +47,9 @@ class ProcessQueryService:
                     if event.is_final_response():
                         final_response = event.content.parts[0].text
             logger.info(f"Agent run completed for {whatsapp_phone_number}. Final response is: {final_response}, type is {type(final_response)}")
-            clean_response = clean_json_string(final_response)
-            response = json.loads(clean_response)
+            clean_response = safe_json_loads(final_response)
             # Extracting the user_facing_response
-            user_message = response["payload"]["user_facing_response"]
+            user_message = clean_response["payload"]["user_facing_response"]
             logger.info(f"User facing response for {whatsapp_phone_number}: {user_message}")
             return user_message if user_message else "I'm sorry, I couldn't process your request."
 

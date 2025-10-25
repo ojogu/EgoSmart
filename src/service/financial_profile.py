@@ -1,0 +1,102 @@
+from src.model import FinancialProfile, User
+from src.service.user import UserService
+from sqlalchemy.ext.asyncio import AsyncSession
+from src.base.exception import (
+    AlreadyExistsError,
+    DatabaseError
+)
+from src.schemas.financial_profile import FinancialProfile as FinancialProfileSchema
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from src.utils.log import setup_logger  # noqa: E402
+logger = setup_logger(__name__, file_path="financial_profile.log")
+
+
+class FinancialProfileService():
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.user_service = UserService(db=db)
+    
+
+    async def check_if_user_has_financial_profile(self, whatsapp_phone_number:str):
+            user = await self.user_service.get_user_by_whatsapp_phone_number(whatsapp_phone_number)
+            if not user:
+                logger.warning(f"User with whatsapp_phone_number: {whatsapp_phone_number} does not exist, creating user.")
+                user = await self.user_service.create_user(whatsapp_phone_number=whatsapp_phone_number)
+                logger.info(f"Successfully created user with whatsapp_phone_number: {whatsapp_phone_number}")
+            else:
+                logger.info(f"User with whatsapp_phone_number: {whatsapp_phone_number} found.")
+            
+            #fetch financial profile
+            stmt = select(FinancialProfile).where(user.whatsapp_phone_number == FinancialProfile.user_id)
+            result = await self.db.execute(stmt)
+            financial_profile = result.scalars().first()
+            
+            if financial_profile:
+                logger.info(f"Financial profile found for user: {whatsapp_phone_number}")
+            else:
+                logger.info(f"No financial profile found for user: {whatsapp_phone_number}")
+            
+            return financial_profile
+        
+        
+    async def update_financial_profile_if_missing(
+        self,
+        whatsapp_phone_number,
+        **data:FinancialProfileSchema 
+    ):
+        
+        """Update profile if fields are missing and return the user."""
+        validated_data = FinancialProfileSchema(**data)
+        try:
+            financial_profile = await self.check_if_user_has_financial_profile(whatsapp_phone_number)
+            
+            if not financial_profile:
+                logger.warning(f"Financial profile for user: {whatsapp_phone_number} does not exist, creating one.")
+                financial_profile = FinancialProfile(user_id=whatsapp_phone_number)
+                self.db.add(financial_profile)
+                await self.db.commit()
+                await self.db.refresh(financial_profile)
+                logger.info(f"Successfully created financial profile for user: {whatsapp_phone_number}")
+
+            # Check if any of the fields in validated_data are present and the corresponding financial_profile field is missing
+            fields_to_update = {}
+            for field, value in validated_data.model_dump(exclude_unset=True).items():
+                if field == "user_id":
+                    continue
+                if getattr(financial_profile, field) is None and value is not None:
+                    fields_to_update[field] = value
+            
+            if not fields_to_update:
+                logger.info(f"Financial profile for {whatsapp_phone_number} is already complete or no new data provided. No update needed.")
+                return financial_profile 
+
+            # Perform the update
+            logger.info(f"Updating financial profile for user {whatsapp_phone_number}")
+            for field, value in fields_to_update.items():
+                setattr(financial_profile, field, value)
+            
+            await self.db.commit()
+            await self.db.refresh(financial_profile)
+            
+            logger.info(f"Successfully updated financial profile for user {whatsapp_phone_number}")
+            return financial_profile 
+        
+        except SQLAlchemyError as e:
+            await self.db.rollback()
+            logger.error(f"Error updating profile for {whatsapp_phone_number}: {e}")
+            raise DatabaseError(f"Could not update profile: {e}") from e
+
+    
+    async def read_user_financial_profile(self, whatsapp_phone_number):
+        logger.info(f"Attempting to read financial profile for user: {whatsapp_phone_number}")
+        stmt = select(FinancialProfile).where(whatsapp_phone_number==FinancialProfile.user_id)
+        result = await self.db.execute(stmt)
+        financial_profile = result.scalars().first()
+        
+        if financial_profile:
+            logger.info(f"Successfully retrieved financial profile for user: {whatsapp_phone_number}")
+        else:
+            logger.info(f"No financial profile found for user: {whatsapp_phone_number}")
+        
+        return financial_profile

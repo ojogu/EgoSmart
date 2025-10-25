@@ -478,7 +478,7 @@ ELIF current_question == 7:  # Current Debt (FINAL QUESTION)
     CALL verify_profile_completeness(collected_fields)
     
     IF not complete:
-        → user_message: "I'm missing some info: {missing_fields}. Let me ask those again..."
+        → user_message: "I'm missing some info: {missing_fields?}. Let me ask those again..."
         → next_expected_action: "retry_collection"
         → ready_for_next_step: false
         → Return
@@ -661,7 +661,7 @@ FOR field in required_fields:
         missing_fields.append(field)
 
 IF missing_fields is not empty:
-    → user_message: "Your profile is incomplete. Missing: {missing_fields}. Would you like to complete it now?"
+    → user_message: "Your profile is incomplete. Missing: {missing_fields?}. Would you like to complete it now?"
     → data: {
         "complete": false,
         "missing_fields": missing_fields
@@ -685,7 +685,7 @@ IF monthly_expenses > monthly_income * 1.5:
     validation_errors.append("Expenses significantly exceed income")
 
 IF validation_errors is not empty:
-    → user_message: "Profile has validation issues: {validation_errors}. Please update your profile."
+    → user_message: "Profile has validation issues: {validation_errors?}. Please update your profile."
     → data: {
         "complete": false,
         "validation_errors": validation_errors
