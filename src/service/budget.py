@@ -12,7 +12,7 @@ from src.utils.log import setup_logger  # noqa: E402
 logger = setup_logger(__name__, file_path="budget.log")
 
 
-class Budgeting():
+class BudgetingService():
     def __init__(self, db: AsyncSession):
         self.db = db
         self.user_service = UserService(db=db)

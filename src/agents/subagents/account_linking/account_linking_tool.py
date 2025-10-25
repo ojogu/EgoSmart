@@ -24,9 +24,6 @@ async def check_link_status( tool_context:ToolContext):
     to the provided WhatsApp number. It returns the linking status or indicates
     if the user does not exist.
 
-    Args:
-        whatsapp_phone_number (str): The WhatsApp phone number of the user.
-
 
     Returns:
         dict: A dictionary containing the linking status.

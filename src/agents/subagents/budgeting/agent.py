@@ -1,10 +1,10 @@
 from google.adk.agents import LlmAgent
 from .prompt import SYSTEM_PROMPT
 from google.adk.tools.agent_tool import AgentTool
-
+from .budgeting_tool import read_user_financial_profile_tool, update_user_financial_profile_tool
 
 budgeting_agent = LlmAgent(
-        name="account_linking_agent",
+        name="budgeting_agent",
         model="gemini-2.5-flash",
         description=(
             "Monitors budget compliance and spending limits: "
@@ -14,10 +14,10 @@ budgeting_agent = LlmAgent(
 ),
         # output_key="finance_linking",
         instruction=SYSTEM_PROMPT, 
-        tools=[],
-   
+        tools=[update_user_financial_profile_tool, read_user_financial_profile_tool],
+
 )
 
 #convert this agent to a tool for the root agent
 
-linking_agent_tool = AgentTool(budgeting_agent)
+budgeting_agent_tool = AgentTool(budgeting_agent)

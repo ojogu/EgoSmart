@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Enum as SqlEnum, Integer, Float
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Enum as SqlEnum, Integer, Float, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship, backref
 from enum import Enum
 from src.base.model import BaseModel
@@ -39,8 +39,8 @@ class Budget(BaseModel):
     )
     name: Mapped[str] = mapped_column(String, default="Monthly Budget", nullable=False)
     period: Mapped[str] = mapped_column(String, default="monthly")  # monthly, weekly, custom
-    start_date: Mapped[datetime.date] = mapped_column(nullable=True)
-    end_date: Mapped[datetime.date] = mapped_column(nullable=True)
+    start_date: Mapped[datetime] = mapped_column(nullable=True)
+    end_date: Mapped[datetime] = mapped_column(nullable=True)
 
     total_income: Mapped[int] = mapped_column(Float, nullable=True)
     total_allocated: Mapped[int] = mapped_column(Float, nullable=True)
@@ -91,7 +91,7 @@ class BudgetTransaction(BaseModel):
     amount: Mapped[int] = mapped_column(Float, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     transaction_type: Mapped[str] = mapped_column(String, default="expense")  # expense | income
-    transaction_date: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.utcnow)
+    transaction_date: Mapped[datetime] = mapped_column(default=func.now())
 
     # Relationships
     category: Mapped["BudgetCategory"] = relationship("BudgetCategory", back_populates="transactions")
