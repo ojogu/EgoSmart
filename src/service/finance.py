@@ -171,10 +171,8 @@ class MonoService():
         try:
             #fetch user 
             user = None
-            stmt = (
-                select(User)
-                .join(AccountLinking, User.whatsapp_phone_number == AccountLinking.user_id)
-            )
+            # Fetch the user using the value from the fetched account_link
+            stmt = select(User).where(User.whatsapp_phone_number == account_link.user_id)
             result = await self.db.execute(stmt)
             user = result.scalars().first()
             account_link.event = event
