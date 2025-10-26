@@ -48,6 +48,8 @@ class ProcessQueryService:
                         final_response = event.content.parts[0].text
             logger.info(f"Agent run completed for {whatsapp_phone_number}. Final response is: {final_response}, type is {type(final_response)}")
             clean_response = safe_json_loads(final_response)
+            logger.info(f"clean response: {clean_response}")
+            logger.info(f"type clean response: {type(clean_response)}")
             # Extracting the user_facing_response
             user_message = clean_response["payload"]["user_facing_response"]
             logger.info(f"User facing response for {whatsapp_phone_number}: {user_message}")
